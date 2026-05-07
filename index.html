@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Mapbox 3D — Carte photoréaliste</title>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.23.1/mapbox-gl.css" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <div class="search-shell" role="search">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M10 2a8 8 0 1 1-5.3 14l-4 4-1.4-1.4 4-4A8 8 0 0 1 10 2m0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12" />
+        </svg>
+        <input
+          id="search-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Rechercher un lieu, une adresse…"
+          aria-label="Rechercher un lieu"
+        />
+        <span class="spinner" id="search-spinner" aria-hidden="true"></span>
+      </div>
+      <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+    </div>
+
+    <div class="light-preset-bar" role="group" aria-label="Éclairage">
+      <button data-preset="dawn" type="button">Dawn</button>
+      <button data-preset="day" type="button">Day</button>
+      <button data-preset="dusk" type="button">Dusk</button>
+      <button data-preset="night" type="button">Night</button>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
