@@ -1,37 +1,104 @@
 # Mapbox 3D — Carte photoréaliste
 
-Application web interactive démontrant une carte Mapbox 3D photoréaliste avec recherche autocomplete (forward geocoding), popup d'adresse au clic (reverse geocoding) et bascule d'éclairage cinématique.
+Application web interactive démontrant une carte Mapbox 3D photoréaliste avec recherche autocomplete, popup d'adresse au clic et bascule d'éclairage cinématique. **v2** : passage TypeScript, tests, CI, et proxy Cloudflare Worker pour ne plus exposer le token côté client.
 
 ## Stack
 
-- **Vite** (vanilla JS) — bundler & dev server
-- **Mapbox GL JS v3** — rendu carte 3D + style Standard photoréaliste
-- **Mapbox Search Box API v1** — autocomplete (forward geocoding)
-- **Mapbox Geocoding API v6** — reverse geocoding au clic
+**Frontend** (`/`) :
+- **Vite 8** + **TypeScript strict** — bundler, HMR, types
+- **Mapbox GL JS v3** — carte 3D + style Standard photoréaliste
+- **Vitest** + **Playwright** — tests unitaires & E2E
+- **ESLint** flat config
 
-> Le serveur **MCP Mapbox** (`geocoding`) est utilisé en parallèle dans Claude Code pour valider les endpoints pendant le développement, mais l'application web tape directement les API REST publiques de Mapbox.
+**Backend** (`/server`) :
+- **Cloudflare Worker** + **Hono** — proxy `/api/*` vers Mapbox
+- Endpoints : `search`, `retrieve/:id`, `reverse`, `category/:id`, `directions`, `isochrone`
+- CORS allowlist + rate limit IP
+
+> Le frontend ne contient **plus** le token Search Box / Geocoding. Seul le token public mapbox-gl (rendu carte) reste côté client, et il est protégé par une URL allowlist côté compte Mapbox.
+
+## Architecture
+
+```
+mapbox-3d-photorealistic/
+├── src/                       # frontend Vite + TS
+│   ├── main.ts                # init carte 3D, contrôles, click→reverse
+│   ├── geocoding.ts           # client du proxy /api/*
+│   ├── search.ts              # autocomplete debounced + flyTo
+│   ├── light-preset.ts        # bascule dawn/day/dusk/night
+│   ├── types/mapbox.ts        # types Search Box + Geocoding v6 + Directions + Isochrone
+│   └── styles.css
+├── tests/
+│   ├── unit/                  # Vitest (geocoding, light-preset)
+│   ├── e2e/                   # Playwright (search.spec.ts)
+│   └── setup.ts               # polyfill localStorage pour happy-dom
+├── server/                    # Cloudflare Worker (Hono)
+│   ├── src/index.ts           # tous les endpoints proxy
+│   ├── wrangler.toml
+│   └── tsconfig.json
+├── .github/workflows/{ci,e2e}.yml
+├── tsconfig.json
+├── vite.config.ts
+├── vitest.config.ts
+├── playwright.config.ts
+└── eslint.config.js
+```
 
 ## Prérequis
 
-- Node.js ≥ 18
-- Un compte Mapbox + token public (préfixe `pk.`)
+- Node.js ≥ 20
+- Compte Mapbox + 1 token public (`pk.*`) avec scopes par défaut
 
 ## Installation
 
 ```bash
-# 1. Installer les dépendances
+# 1. Frontend
 npm install
 
-# 2. Récupérer un token public sur https://account.mapbox.com/access-tokens/
-#    Les scopes par défaut suffisent.
+# 2. Worker proxy
+npm --prefix server install
+```
 
-# 3. Créer .env à partir du template
+## Configuration
+
+### 1. Token public (frontend / mapbox-gl)
+
+```bash
 cp .env.example .env
+# Editer .env : VITE_MAPBOX_PUBLIC_TOKEN=pk.xxxxxxxx
+```
 
-# 4. Coller le token dans .env
-#    VITE_MAPBOX_ACCESS_TOKEN=pk.xxxxxxxx
+⚠️ **Sécurité** : ce token finit dans le bundle JS, il est par nature visible. Restreins-le immédiatement :
 
-# 5. Lancer le dev server
+1. Va sur [account.mapbox.com/access-tokens](https://account.mapbox.com/access-tokens/)
+2. Édite ton token public
+3. Active **URL allowlist** et ajoute les domaines autorisés :
+   - `http://127.0.0.1:5173/*` (dev)
+   - `http://localhost:5173/*` (dev)
+   - `https://*.pages.dev/*` (preview Cloudflare Pages)
+   - Ton domaine prod (ex : `https://mapbox-3d.example.com/*`)
+
+Sans allowlist, le token peut être recopié et utilisé sur d'autres sites — facturation à ton compte.
+
+### 2. Token secret (Worker proxy)
+
+Crée [server/.dev.vars](server/.dev.vars) (gitignored) en t'inspirant de [server/.dev.vars.example](server/.dev.vars.example) :
+
+```
+MAPBOX_SECRET_TOKEN=pk.xxxxxxxx
+```
+
+Ce token est utilisé côté serveur uniquement et n'est jamais transmis au navigateur. En production : `wrangler secret put MAPBOX_SECRET_TOKEN`.
+
+## Développement
+
+Lancer **les deux** processus en parallèle (deux terminaux) :
+
+```bash
+# Terminal 1 — Worker proxy (port 8787)
+npm run dev:server
+
+# Terminal 2 — Vite (port 5173, proxie /api → :8787)
 npm run dev
 ```
 
@@ -41,64 +108,57 @@ Ouvrir [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
 | Commande | Effet |
 |---|---|
-| `npm run dev` | Dev server avec HMR sur port 5173 |
-| `npm run build` | Build de production dans `dist/` |
-| `npm run preview` | Preview du build de prod |
+| `npm run dev` | Vite dev server (5173) |
+| `npm run dev:server` | Worker dev (wrangler, 8787) |
+| `npm run build` | Build prod (bundle frontend ~ 1KB gzip + mapbox-gl chunk) |
+| `npm run preview` | Preview du build prod |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm test` | Tests unitaires (Vitest) |
+| `npm run test:cov` | Couverture |
+| `npm run test:e2e` | Tests E2E Playwright |
+| `npm --prefix server run typecheck` | Typecheck du Worker |
+| `npm --prefix server run deploy` | Deploy Worker (`wrangler deploy`) |
 
-## Architecture
+## CI
 
-```
-src/
-├── main.js          — Init carte 3D (Standard, terrain, fog, contrôles, click→reverse)
-├── search.js        — Autocomplete debounced + dropdown + flyTo cinématique
-├── geocoding.js     — Wrappers fetch pour Search Box + Geocoding v6 (session token, AbortController)
-├── light-preset.js  — Bascule lightPreset (dawn/day/dusk/night) + persistance localStorage
-└── styles.css       — UI dark minimaliste, responsive, popup Mapbox restyle
-```
+- [.github/workflows/ci.yml](.github/workflows/ci.yml) — sur push/PR : typecheck + lint + tests Vitest + build (frontend + Worker)
+- [.github/workflows/e2e.yml](.github/workflows/e2e.yml) — déclenchement manuel (préserve quota Mapbox). Token via secret `MAPBOX_E2E_TOKEN`.
 
-## Fonctionnalités
+## Test manuel (livrable v1, toujours valide en v2)
 
-- **Carte 3D photoréaliste** : style `mapbox://styles/mapbox/standard`, bâtiments 3D inclus, terrain DEM avec exagération 1.5×, brouillard atmosphérique, pitch initial 70°
-- **Recherche autocomplete** : debounce 300ms, navigation clavier (↑/↓/Enter/Esc), cancellation `AbortController` sur les requêtes obsolètes
-- **flyTo cinématique** : 5s, courbe 1.42, zoom 17, pitch 70° vers le résultat sélectionné
-- **Reverse geocoding** : clic sur la carte → popup avec adresse formatée
-- **4 presets lumineux** : dawn / day / dusk / night, avec persistance localStorage
-- **Contrôles natifs** : zoom, boussole avec visualisation du pitch, plein écran, géolocalisation
-- **Gestion d'erreur** : token invalide (401), quota dépassé (429), aucun résultat — tous affichés dans l'UI
-- **Responsive** : input et boutons adaptés au mobile
+1. `npm run dev:server` + `npm run dev`
+2. Ouvrir [http://127.0.0.1:5173](http://127.0.0.1:5173)
+3. Taper « Tour Eiffel » → suggestions via `/api/search` (DevTools network — aucun appel direct à `api.mapbox.com` pour le geocoding)
+4. Cliquer la 1ère suggestion → flyTo cinématique 5s vers Paris
+5. Clic sur la carte → popup adresse via `/api/reverse`
+6. Cycler les presets (dawn/day/dusk/night) → ambiance change, persistance localStorage
 
-## Test manuel (livrable)
-
-1. Lancer `npm run dev` → ouvrir [http://127.0.0.1:5173](http://127.0.0.1:5173)
-2. Vérifier que la carte 3D charge sur Paris (Tour Eiffel par défaut), bâtiments 3D visibles
-3. Taper « Tour Eiffel » dans la barre de recherche
-4. Une dropdown apparaît avec des suggestions (la première devrait être la Tour Eiffel)
-5. Cliquer sur la suggestion → la carte effectue un `flyTo` cinématique de 5s vers `[2.2945, 48.8584]`, zoom 17, pitch 70°
-6. La Tour Eiffel doit être visible en 3D photoréaliste à l'arrivée
-7. Cliquer ensuite sur la Place de la Concorde → popup avec l'adresse
-8. Cycler les 4 boutons d'éclairage (Dawn / Day / Dusk / Night) → l'ambiance lumineuse change visiblement, l'état persiste après reload
-
-## Vérifier que le MCP Mapbox répond
-
-Côté Claude Code (terminal) :
+## Vérifier que le MCP Mapbox répond (côté Claude Code)
 
 ```bash
-claude mcp list
-# Doit afficher : geocoding: https://mcp.mapbox.com/mcp (HTTP) - ✓ Connected
+claude mcp list | grep geocoding
+# → geocoding: https://mcp.mapbox.com/mcp (HTTP) - ✓ Connected
 ```
 
-Si le statut est `! Needs authentication`, taper `/mcp` dans Claude Code et lancer le flux OAuth. Une fois authentifié, Claude peut invoquer les tools (`search_and_geocode_tool`, `reverse_geocode_tool`, etc.) pour vérifier les endpoints sans quitter la session.
+Le MCP n'est pas appelable depuis le navigateur — il sert uniquement à Claude pour valider les endpoints pendant le développement.
 
-> ⚠️ Le MCP n'est PAS appelable depuis le navigateur — il sert uniquement à Claude pour le diagnostic. Le frontend de cette app utilise les API REST Mapbox directement.
+## Roadmap v2 (phases suivantes)
+
+- **Phase 2** : URL state sync, bouton "Partager cette vue", panneau favoris
+- **Phase 3** : Itinéraires (Directions API) + recherche par catégorie + Isochrones
+- **Phase 4** : Story mode scrollytelling + auto time-of-day
+- **Phase 5** : i18n FR/EN, accessibilité Lighthouse ≥95, PWA, déploiement Cloudflare
 
 ## Dépannage
 
-| Symptôme | Cause probable | Fix |
+| Symptôme | Cause | Fix |
 |---|---|---|
-| Écran « Token Mapbox manquant » | Pas de `.env` ou variable mal nommée | Vérifier `.env` : `VITE_MAPBOX_ACCESS_TOKEN=pk.xxx` |
-| Écran « Token Mapbox invalide » | Token expiré ou faux | Régénérer un token sur account.mapbox.com |
-| Suggestions vides | Quota dépassé / token sans scope geocoding | Vérifier le compte Mapbox |
-| Bâtiments 3D absents | Pitch trop bas | Augmenter le pitch (≥ 60°) via le compass |
+| Écran « Token Mapbox manquant » | Pas de `.env` ou clé fausse | Renommer `VITE_MAPBOX_ACCESS_TOKEN` → `VITE_MAPBOX_PUBLIC_TOKEN` |
+| 401 sur `/api/search` | `MAPBOX_SECRET_TOKEN` absent côté Worker | Créer `server/.dev.vars` |
+| 403 sur `/api/*` | Origin pas dans allowlist | Vérifier `ALLOWED_ORIGINS` dans `server/wrangler.toml` |
+| 429 trop tôt | Rate limit Worker | Ajuster `RATE_LIMIT_PER_SECOND` ou désactiver en dev |
+| Suggestions vides | Quota Mapbox dépassé | Vérifier le compte |
 
 ## Licence
 
