@@ -204,11 +204,13 @@ function bootstrap(): void {
     initClickReverseGeocode(map);
     bindUrlState(map, { getPreset: presetCtl.current });
     initShareButton();
-    initFavoritesPanel(map, presetCtl);
+    const favoritesCtl = initFavoritesPanel(map, presetCtl);
     const directionsCtl = initDirections(map);
     initSearchCategories(map);
     initIsochrone(map, directionsCtl);
-    initStory(map, presetCtl);
+    // BUG-011 v2 : pass refs so Story Paris can hide/restore the secondary
+    // panels for immersion.
+    initStory(map, presetCtl, { favorites: favoritesCtl, directions: directionsCtl });
     initAutoPreset(map, presetCtl);
     initI18nUI();
   });

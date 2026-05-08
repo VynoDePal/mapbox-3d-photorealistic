@@ -26,9 +26,24 @@ interface FavMap {
   jumpTo(opts: { center: [number, number]; zoom: number; pitch: number; bearing: number }): void;
 }
 
-export function initFavoritesPanel(map: MapboxMap, preset: PresetController): void {
+export interface FavoritesController {
+  isOpen(): boolean;
+  open(): void;
+  close(): void;
+}
+
+const NOOP_FAVORITES: FavoritesController = {
+  isOpen: () => false,
+  open: () => undefined,
+  close: () => undefined,
+};
+
+export function initFavoritesPanel(
+  map: MapboxMap,
+  preset: PresetController
+): FavoritesController {
   const trigger = document.getElementById('btn-favorites');
-  if (!trigger) return;
+  if (!trigger) return NOOP_FAVORITES;
 
   const panel = createPanel({ title: t('favPanelTitle'), side: 'right' });
   trigger.addEventListener('click', () => panel.toggle());
@@ -38,6 +53,12 @@ export function initFavoritesPanel(map: MapboxMap, preset: PresetController): vo
   };
   render();
   onLangChange(() => render());
+
+  return {
+    isOpen: () => panel.isOpen(),
+    open: () => panel.open(),
+    close: () => panel.close(),
+  };
 }
 
 function buildBody(
