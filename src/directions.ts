@@ -3,6 +3,7 @@ import type { DirectionsProfile, DirectionsResponse, DirectionsRoute } from '@/t
 import { h } from '@/ui/panel.ts';
 import { showToast } from '@/ui/toast.ts';
 import { bearing, formatDistance, formatDuration } from '@/utils/geo.ts';
+import { t, onLangChange } from '@/i18n/index.ts';
 
 const SOURCE_ID = 'directions-route';
 const LAYER_GLOW = 'directions-route-glow';
@@ -54,7 +55,7 @@ export function initDirections(map: MapboxMap): DirectionsController {
     toggleBtn.classList.toggle('active', active);
     if (active) {
       panel.show();
-      showToast('Clique sur la carte pour ajouter des points');
+      showToast(t('dirHint'));
       map.getCanvas().style.cursor = 'crosshair';
     } else {
       clearAll();
@@ -132,13 +133,13 @@ export function initDirections(map: MapboxMap): DirectionsController {
         signal: abortCtrl.signal,
       });
       if (!res.ok) {
-        showToast(`Erreur Directions HTTP ${res.status}`);
+        showToast(t('dirHttpError', res.status));
         return;
       }
       const data = (await res.json()) as DirectionsResponse;
       const route = data.routes[0];
       if (!route) {
-        showToast('Aucun itinéraire trouvé');
+        showToast(t('dirNoRoute'));
         removeRouteLayer();
         lastRoute = null;
         panel.setSummary(null);
@@ -152,7 +153,7 @@ export function initDirections(map: MapboxMap): DirectionsController {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      showToast('Erreur réseau (Directions)');
+      showToast(t('dirNetworkError'));
     } finally {
       panel.setLoading(false);
     }
@@ -344,25 +345,33 @@ function buildPanel(opts: PanelOpts): PanelHandle {
     type: 'button',
     class: 'dir-action',
     disabled: true,
-  }, ['🎬 Suivre l’itinéraire']);
+  }, [t('dirFollow')]);
   followBtn.addEventListener('click', () => opts.onFollow());
 
   const clearBtn = h('button', {
     type: 'button',
     class: 'dir-action dir-clear',
-  }, ['Effacer']);
+  }, [t('dirClear')]);
   clearBtn.addEventListener('click', () => opts.onClear());
 
+  const titleEl = h('h2', { class: 'dir-panel-title' }, [t('dirPanelTitle')]);
   const root = h('aside', { class: 'dir-panel', hidden: true }, [
-    h('header', { class: 'dir-panel-header' }, [
-      h('h2', { class: 'dir-panel-title' }, ['Itinéraire']),
-      profileBar,
-    ]),
+    h('header', { class: 'dir-panel-header' }, [titleEl, profileBar]),
     list,
     summary,
     h('div', { class: 'dir-actions' }, [followBtn, clearBtn]),
   ]);
   document.body.appendChild(root);
+
+  // Re-translate static labels when the language changes.
+  onLangChange(() => {
+    titleEl.textContent = t('dirPanelTitle');
+    followBtn.textContent = t('dirFollow');
+    clearBtn.textContent = t('dirClear');
+    profileBtns.forEach((btn, p) => {
+      btn.textContent = labelFor(p);
+    });
+  });
 
   return {
     show: () => {
@@ -375,9 +384,7 @@ function buildPanel(opts: PanelOpts): PanelHandle {
     setWaypoints: (items, onRemove) => {
       list.innerHTML = '';
       if (items.length === 0) {
-        const empty = h('li', { class: 'dir-wp-empty' }, [
-          'Clique sur la carte pour ajouter au moins 2 points',
-        ]);
+        const empty = h('li', { class: 'dir-wp-empty' }, [t('dirEmpty')]);
         list.append(empty);
         return;
       }
@@ -408,11 +415,11 @@ function buildPanel(opts: PanelOpts): PanelHandle {
       if (!s) return;
       summary.append(
         h('div', { class: 'dir-summary-row' }, [
-          h('span', { class: 'dir-summary-key' }, ['Durée']),
+          h('span', { class: 'dir-summary-key' }, [t('dirSummaryDuration')]),
           h('span', { class: 'dir-summary-val' }, [s.durationLabel]),
         ]),
         h('div', { class: 'dir-summary-row' }, [
-          h('span', { class: 'dir-summary-key' }, ['Distance']),
+          h('span', { class: 'dir-summary-key' }, [t('dirSummaryDistance')]),
           h('span', { class: 'dir-summary-val' }, [s.distanceLabel]),
         ])
       );
@@ -422,5 +429,5 @@ function buildPanel(opts: PanelOpts): PanelHandle {
 }
 
 function labelFor(p: DirectionsProfile): string {
-  return p === 'driving' ? '🚗 Voiture' : p === 'walking' ? '🚶 Marche' : '🚴 Vélo';
+  return p === 'driving' ? t('dirProfileDriving') : p === 'walking' ? t('dirProfileWalking') : t('dirProfileCycling');
 }

@@ -1,0 +1,56 @@
+{
+  "title": "Paris en 3D",
+  "subtitle": "Six monuments, une heure d'or",
+  "chapters": [
+    {
+      "id": "ile-de-la-cite",
+      "title": "Île de la Cité",
+      "narration": "Berceau historique de Paris. Au lever du jour, la pointe ouest de l'île émerge de la brume, encadrée par les deux bras de la Seine. La Conciergerie veille à droite.",
+      "camera": { "lng": 2.3437, "lat": 48.8554, "zoom": 16.4, "pitch": 65, "bearing": 30 },
+      "preset": "dawn",
+      "durationMs": 6000
+    },
+    {
+      "id": "notre-dame",
+      "title": "Notre-Dame",
+      "narration": "Sa flèche reconstruite domine à nouveau l'île. Vue plongeante sur la cathédrale, l'abside et les jardins du square Jean-XXIII.",
+      "camera": { "lng": 2.3499, "lat": 48.8530, "zoom": 17, "pitch": 70, "bearing": 110 },
+      "preset": "day",
+      "durationMs": 6000
+    },
+    {
+      "id": "louvre",
+      "title": "Le Louvre — orbite",
+      "narration": "On glisse vers la rive droite. La pyramide de verre brille au centre de la cour Napoléon, encerclée par les ailes Richelieu, Sully et Denon. La caméra orbite lentement.",
+      "camera": { "lng": 2.3364, "lat": 48.8606, "zoom": 17.2, "pitch": 65, "bearing": 0 },
+      "preset": "day",
+      "durationMs": 12000,
+      "orbit": { "rpm": 2.5, "tilt": 65 }
+    },
+    {
+      "id": "champs",
+      "title": "Champs-Élysées → Arc de Triomphe",
+      "narration": "Remontée de l'avenue la plus célèbre du monde, jusqu'à l'étoile et ses douze avenues qui rayonnent. Vue cinématique inclinée vers l'ouest.",
+      "camera": { "lng": 2.2950, "lat": 48.8738, "zoom": 16.2, "pitch": 70, "bearing": -75 },
+      "preset": "day",
+      "durationMs": 7000
+    },
+    {
+      "id": "tour-eiffel",
+      "title": "Tour Eiffel — orbite au crépuscule",
+      "narration": "Le moment magique. La caméra fait le tour complet de la Dame de fer pendant que le ciel passe au rose et que les lumières de la ville s'allument.",
+      "camera": { "lng": 2.2945, "lat": 48.8584, "zoom": 17.4, "pitch": 70, "bearing": 0 },
+      "preset": "dusk",
+      "durationMs": 14000,
+      "orbit": { "rpm": 2, "tilt": 70 }
+    },
+    {
+      "id": "montmartre",
+      "title": "Montmartre",
+      "narration": "On termine en altitude. Le Sacré-Cœur perché au sommet de la butte, dernière touche blanche dans la nuit parisienne qui s'installe.",
+      "camera": { "lng": 2.3431, "lat": 48.8867, "zoom": 16.8, "pitch": 65, "bearing": 200 },
+      "preset": "night",
+      "durationMs": 6000
+    }
+  ]
+}
