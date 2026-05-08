@@ -151,11 +151,47 @@ function buildItem(
     [t('favRename')]
   );
   renameBtn.addEventListener('click', () => {
-    const next = window.prompt(t('favRenamePrompt'), fav.name);
-    if (next !== null && next.trim()) {
-      rename(fav.id, next);
-      rerender();
-    }
+    // Inline rename: swap the <span> for an editable <input>. Enter and blur
+    // commit, Escape cancels and restores the previous label. (BUG-004)
+    if (nameEl.parentElement?.querySelector('.fav-rename-input')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'fav-rename-input';
+    input.value = fav.name;
+    input.maxLength = 80;
+    input.setAttribute('aria-label', `${t('favRename')} — ${fav.name}`);
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = (): void => {
+      if (committed) return;
+      committed = true;
+      const next = input.value.trim();
+      if (next && next !== fav.name) {
+        rename(fav.id, next);
+        rerender();
+      } else {
+        // Restore the original span — no rerender needed when nothing changed.
+        input.replaceWith(nameEl);
+      }
+    };
+    const cancel = (): void => {
+      if (committed) return;
+      committed = true;
+      input.replaceWith(nameEl);
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancel();
+      }
+    });
+    input.addEventListener('blur', commit);
   });
 
   const delBtn = h(
