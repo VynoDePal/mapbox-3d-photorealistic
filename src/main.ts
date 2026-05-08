@@ -85,12 +85,19 @@ function bootstrap(): void {
     showUserHeading: true,
   });
   map.addControl(geolocate, 'top-right');
-  // BUG-012: surface a toast when the user denies the prompt or the device
-  // can't determine its position. Mapbox emits the standard PositionError
-  // shape on the 'error' event.
-  geolocate.on('error', (err: { code?: number } | undefined) => {
-    const code = err?.code;
-    showToast(code === 1 ? t('geolocDenied') : t('geolocUnavailable'), 3000);
+  // BUG-012 v1 + BUG-008 v2 : surface a toast when geolocation fails.
+  // Mapbox emits the browser PositionError on the 'error' event. The event
+  // payload may also be wrapped (`e.error.code`) on some versions, so we
+  // check both shapes defensively.
+  geolocate.on('error', (event: unknown) => {
+    const err = event as { code?: number; error?: { code?: number } } | undefined;
+    const code = err?.code ?? err?.error?.code;
+    let key: 'geolocDenied' | 'geolocUnavailable' | 'geolocTimeout';
+    if (code === 1) key = 'geolocDenied';
+    else if (code === 3) key = 'geolocTimeout';
+    else key = 'geolocUnavailable';
+    console.warn('[geolocate] error', { code, raw: event });
+    showToast(t(key), 4000);
   });
 
   // BUG-006 v2: exponential backoff retry on style failures.
