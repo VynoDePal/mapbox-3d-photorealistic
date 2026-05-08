@@ -514,7 +514,7 @@ html, body {
   position: absolute;
   bottom: 24px;
   left: 80px;
-  width: min(92vw, 320px);
+  width: min(320px, calc(100vw - 96px));
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
@@ -904,4 +904,16 @@ html, body {
   }
   .panel { width: 100vw; }
   .story-panel { width: 100vw; }
+  /* Mobile: toolbar moves to top, so dir-panel and iso-controls
+     use the full bottom width minus 8px gutters. */
+  .dir-panel {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+  }
+  .iso-controls {
+    left: 8px;
+    right: 8px;
+  }
 }
