@@ -132,9 +132,12 @@ export function initSearch(map: MapboxMap): void {
   });
 
   input.addEventListener('keydown', (e) => {
-    // Escape is handled in two stages (BUG-008):
-    //  1) if the suggestions dropdown is open → close it (keep the input value)
-    //  2) otherwise, if the input still has text → clear it and blur
+    // Escape — 2-step (BUG-008 v1, re-confirmed in BUG-007 v2 E2E) :
+    //  1) dropdown ouverte → close (keep input value, focus reste)
+    //  2) dropdown fermée + input non vide → clear input + blur + cancel any
+    //     pending debounced search to avoid the dropdown popping back open
+    //     while the user is moving away.
+    //  3) input vide → no-op (laisse l'event bubbler pour fermer modales etc.)
     if (e.key === 'Escape') {
       if (!list.hidden) {
         e.preventDefault();
@@ -142,6 +145,11 @@ export function initSearch(map: MapboxMap): void {
       } else if (input.value !== '') {
         e.preventDefault();
         input.value = '';
+        if (debounceId !== undefined) {
+          clearTimeout(debounceId);
+          debounceId = undefined;
+        }
+        abortCtrl?.abort();
         input.blur();
       }
       return;
