@@ -1,6 +1,6 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
 import { add, findByName, list, remove, rename, type Favorite, type FavoriteInput } from '@/favorites.ts';
-import { createPanel, h, type PanelHandle } from '@/ui/panel.ts';
+import { createPanel, h } from '@/ui/panel.ts';
 import { showToast, showActionToast } from '@/ui/toast.ts';
 import type { PresetController } from '@/light-preset.ts';
 import type { LightPreset } from '@/types/mapbox.ts';
@@ -34,7 +34,7 @@ export function initFavoritesPanel(map: MapboxMap, preset: PresetController): vo
   trigger.addEventListener('click', () => panel.toggle());
 
   const render = (): void => {
-    panel.setBody(buildBody(map as unknown as FavMap, preset, render, panel));
+    panel.setBody(buildBody(map as unknown as FavMap, preset, render));
   };
   render();
   onLangChange(() => render());
@@ -43,8 +43,7 @@ export function initFavoritesPanel(map: MapboxMap, preset: PresetController): vo
 function buildBody(
   map: FavMap,
   preset: PresetController,
-  rerender: () => void,
-  panel: PanelHandle
+  rerender: () => void
 ): HTMLElement {
   const wrapper = h('div', { class: 'fav-wrapper' });
 
@@ -106,7 +105,7 @@ function buildBody(
   } else {
     const ul = h('ul', { class: 'fav-list' });
     for (const fav of items) {
-      ul.append(buildItem(fav, map, preset, rerender, panel));
+      ul.append(buildItem(fav, map, preset, rerender));
     }
     wrapper.append(ul);
   }
@@ -118,8 +117,7 @@ function buildItem(
   fav: Favorite,
   map: FavMap,
   preset: PresetController,
-  rerender: () => void,
-  panel: PanelHandle
+  rerender: () => void
 ): HTMLElement {
   const nameEl = h('span', { class: 'fav-name' }, [fav.name]);
   const presetChip = h('span', {
@@ -143,7 +141,8 @@ function buildItem(
       essential: true,
     });
     preset.set(fav.preset as LightPreset);
-    panel.close();
+    // BUG-010: keep the panel open so the user can chain navigations
+    // between favorites. Closing is up to the user (× / Escape).
   });
 
   const renameBtn = h(
