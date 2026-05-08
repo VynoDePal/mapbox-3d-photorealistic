@@ -91,10 +91,15 @@ html, body {
   flex: 1;
   background: transparent;
   border: none;
-  outline: none;
   color: var(--text);
   font-size: 15px;
 }
+/* No outline on mouse focus (cosmetic), but keep the global :focus-visible
+   rule from the a11y section so keyboard users see a clear focus ring
+   (BUG-006). The previous `outline: none` here defeated that override by
+   ID specificity. `:not(:focus-visible)` scopes the suppression to
+   non-keyboard focus only. */
+#search-input:focus:not(:focus-visible) { outline: none; }
 #search-input::placeholder { color: var(--text-dim); }
 
 .spinner {
