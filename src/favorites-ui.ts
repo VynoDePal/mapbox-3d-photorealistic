@@ -7,6 +7,7 @@ import type { LightPreset } from '@/types/mapbox.ts';
 import { t } from '@/i18n/index.ts';
 import { adaptiveFlyTo } from '@/utils/motion.ts';
 import { onLangChange } from '@/i18n/index.ts';
+import { truncate } from '@/utils/format.ts';
 
 interface FavMap {
   getCenter(): { lng: number; lat: number };
@@ -79,7 +80,7 @@ function buildBody(
     };
     add(input);
     nameInput.value = '';
-    showToast(t('favSaved', name));
+    showToast(t('favSaved', truncate(name, 40)));
     rerender();
   });
 
@@ -158,7 +159,7 @@ function buildItem(
   );
   delBtn.addEventListener('click', () => {
     remove(fav.id);
-    showToast(t('favRemoved', fav.name));
+    showToast(t('favRemoved', truncate(fav.name, 40)));
     rerender();
   });
 

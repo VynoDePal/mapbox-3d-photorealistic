@@ -7,7 +7,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 | ID | Sévérité | Titre | Statut | Commit | Notes |
 |---|---|---|---|---|---|
 | BUG-001 | 🟡 Mineur | Doublons de favoris autorisés | TODO | — | Refus + toast (cf. plan validé) |
-| BUG-002 | 🟠 Majeur | Toast déborde avec nom long | TODO | — | `.toast` `max-width` + `word-break` + truncate 40 chars |
+| BUG-002 | 🟠 Majeur | Toast déborde avec nom long | ✅ DONE | _pending_ | `.toast` `max-width: min(420px, calc(100vw - 32px))` + `word-break: break-word` + `border-radius: 14px` (au lieu de pill 999px). Util `truncate(name, 40)` appliqué avant l'injection dans `favSaved`/`favRemoved`. 5 nouveaux tests unit. |
 | BUG-003 | 🟡 Mineur | Suppression sans confirmation | TODO | — | Action toast 5s avec « Annuler » |
 | BUG-004 | 🟡 Mineur | Renommage via prompt() natif | TODO | — | Édition inline du nom |
 | BUG-005 | 🟠 Majeur | Overflow horizontal mobile | ✅ DONE | _pending_ | `.dir-panel` overflow @ 320px (left:80 + width:92vw=294 = 374). Capped to `min(320px, calc(100vw - 96px))` desktop, `left:8/right:8` mobile. Same for `.iso-controls`. |

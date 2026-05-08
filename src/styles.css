@@ -417,12 +417,21 @@ html, body {
   padding: 10px 16px;
   background: var(--panel);
   border: 1px solid var(--panel-border);
-  border-radius: 999px;
+  /* Was border-radius: 999px (pill) which forced the toast to stretch with
+     the message width. Use a softer radius so wrapping/breaking works. */
+  border-radius: 14px;
   color: var(--text);
   font-size: 13px;
+  line-height: 1.4;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  /* Hard cap to prevent overflow on long messages (BUG-002). */
+  max-width: min(420px, calc(100vw - 32px));
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  pointer-events: auto;
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 0.2s, transform 0.2s;
