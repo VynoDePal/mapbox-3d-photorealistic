@@ -9,7 +9,10 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div id="map"></div>
+    <a href="#map" class="skip-link" data-i18n="skipToMap">Aller à la carte</a>
+    <div id="map" tabindex="-1"></div>
+
+    <div id="lang-switcher" class="lang-switcher" role="group" aria-label="Changer la langue"></div>
 
     <div class="search-shell" role="search">
       <div class="search-input-wrap">
@@ -23,6 +26,12 @@
           spellcheck="false"
           placeholder="Rechercher un lieu, une adresse…"
           aria-label="Rechercher un lieu"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls="search-results"
+          aria-expanded="false"
+          aria-haspopup="listbox"
+          data-i18n-attr="placeholder=searchPlaceholder,aria-label=searchAriaLabel"
         />
         <span class="spinner" id="search-spinner" aria-hidden="true"></span>
       </div>
@@ -31,43 +40,91 @@
     </div>
 
     <div class="light-preset-bar" role="group" aria-label="Éclairage">
-      <button data-preset="dawn" type="button">Dawn</button>
-      <button data-preset="day" type="button">Day</button>
-      <button data-preset="dusk" type="button">Dusk</button>
-      <button data-preset="night" type="button">Night</button>
+      <button data-preset="dawn" type="button" data-i18n="presetDawn">Aube</button>
+      <button data-preset="day" type="button" data-i18n="presetDay">Jour</button>
+      <button data-preset="dusk" type="button" data-i18n="presetDusk">Crépuscule</button>
+      <button data-preset="night" type="button" data-i18n="presetNight">Nuit</button>
+      <button
+        data-preset="auto"
+        type="button"
+        aria-pressed="false"
+        data-i18n="presetAuto"
+        data-i18n-attr="title=presetAutoTitle"
+        title="Suivre l'heure locale"
+      >Auto</button>
     </div>
 
     <div class="toolbar" role="toolbar" aria-label="Outils">
-      <button id="btn-share" type="button" class="toolbar-btn" aria-label="Partager cette vue" title="Partager cette vue">
+      <button
+        id="btn-share"
+        type="button"
+        class="toolbar-btn"
+        data-i18n-attr="aria-label=toolbarShare,title=toolbarShare"
+        aria-label="Partager cette vue"
+        title="Partager cette vue"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
           <path fill="currentColor" d="M18 8a3 3 0 1 0-2.82-4H15a3 3 0 0 0 0 6 3 3 0 0 0 .18 0l-6.36 3.7A3 3 0 1 0 6 16a3 3 0 0 0 .18 0l-.06-.04 6.34-3.7A3 3 0 0 0 18 8m0 8a1 1 0 0 1 1 1 1 1 0 0 1-2 0 1 1 0 0 1 1-1M6 13a1 1 0 0 1 1 1 1 1 0 0 1-2 0 1 1 0 0 1 1-1m12-8a1 1 0 0 1 1 1 1 1 0 0 1-2 0 1 1 0 0 1 1-1"/>
         </svg>
       </button>
-      <button id="btn-favorites" type="button" class="toolbar-btn" aria-label="Mes lieux" title="Mes lieux">
+      <button
+        id="btn-favorites"
+        type="button"
+        class="toolbar-btn"
+        data-i18n-attr="aria-label=toolbarFavorites,title=toolbarFavorites"
+        aria-label="Mes lieux"
+        title="Mes lieux"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
           <path fill="currentColor" d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
         </svg>
       </button>
-      <button id="btn-directions" type="button" class="toolbar-btn" aria-label="Itinéraire" title="Itinéraire">
+      <button
+        id="btn-directions"
+        type="button"
+        class="toolbar-btn"
+        data-i18n-attr="aria-label=toolbarDirections,title=toolbarDirections"
+        aria-label="Itinéraire"
+        title="Itinéraire"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
           <path fill="currentColor" d="m21.71 11.29-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42M14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5L17.5 11z"/>
         </svg>
       </button>
-      <button id="btn-isochrone" type="button" class="toolbar-btn" aria-label="Combien de temps ?" title="Combien de temps ?">
+      <button
+        id="btn-isochrone"
+        type="button"
+        class="toolbar-btn"
+        data-i18n-attr="aria-label=toolbarIsochrone,title=toolbarIsochrone"
+        aria-label="Combien de temps ?"
+        title="Combien de temps ?"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
           <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8m.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        </svg>
+      </button>
+      <button
+        id="btn-story"
+        type="button"
+        class="toolbar-btn"
+        data-i18n-attr="aria-label=toolbarStory,title=toolbarStory"
+        aria-label="Story interactive"
+        title="Story Paris"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+          <path fill="currentColor" d="M8 5v14l11-7z"/>
         </svg>
       </button>
     </div>
 
     <div class="iso-controls" id="iso-controls" hidden>
-      <label for="iso-profile">Profil :</label>
+      <label for="iso-profile" data-i18n="isoProfileLabel">Profil :</label>
       <select id="iso-profile">
-        <option value="walking">Marche</option>
-        <option value="cycling">Vélo</option>
-        <option value="driving">Voiture</option>
+        <option value="walking" data-i18n="isoProfileWalking">Marche</option>
+        <option value="cycling" data-i18n="isoProfileCycling">Vélo</option>
+        <option value="driving" data-i18n="isoProfileDriving">Voiture</option>
       </select>
-      <button id="iso-clear" type="button">Effacer</button>
+      <button id="iso-clear" type="button" data-i18n="isoClear">Effacer</button>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

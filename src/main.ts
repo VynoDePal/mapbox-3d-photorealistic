@@ -8,16 +8,20 @@ import { showToast } from '@/ui/toast.ts';
 import { initDirections } from '@/directions.ts';
 import { initSearchCategories } from '@/search-categories.ts';
 import { initIsochrone } from '@/isochrone.ts';
+import { initStory } from '@/story.ts';
+import { initAutoPreset } from '@/light-preset-auto.ts';
+import { initI18nUI, applyStaticTranslations } from '@/i18n-ui.ts';
+import { t } from '@/i18n/index.ts';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
+applyStaticTranslations();
 if (!TOKEN || TOKEN.startsWith('pk.your_token')) {
   showFatalError(
-    'Token Mapbox manquant',
-    'Crée un fichier .env à la racine du projet avec :',
+    t('errTokenMissing'),
+    t('errTokenMissingHint'),
     'VITE_MAPBOX_PUBLIC_TOKEN=pk.xxx',
-    'Récupère un token public sur https://account.mapbox.com/access-tokens/, puis relance npm run dev. ' +
-      'Pense à protéger ce token via une URL allowlist côté Mapbox (cf. README).'
+    t('errTokenMissingHelp')
   );
 } else {
   mapboxgl.accessToken = TOKEN;
@@ -72,11 +76,7 @@ function bootstrap(): void {
   map.on('error', (e) => {
     const status = (e.error as { status?: number } | undefined)?.status;
     if (status === 401) {
-      showFatalError(
-        'Token Mapbox invalide',
-        'Le token a été refusé par Mapbox (HTTP 401).',
-        'Vérifie que VITE_MAPBOX_PUBLIC_TOKEN dans .env contient un token public valide (préfixe pk.).'
-      );
+      showFatalError(t('errTokenInvalid'), t('errTokenInvalidHint'), t('errTokenInvalidHelp'));
     }
   });
 
@@ -108,6 +108,9 @@ function bootstrap(): void {
     initDirections(map);
     initSearchCategories(map);
     initIsochrone(map);
+    initStory(map, presetCtl);
+    initAutoPreset(map, presetCtl);
+    initI18nUI();
   });
 }
 
@@ -123,10 +126,10 @@ async function copyCurrentUrl(): Promise<void> {
   const url = window.location.href;
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Lien copié');
+    showToast(t('shareCopied'));
   } catch {
     // Fallback if clipboard API is blocked (insecure context, permissions).
-    showToast('Impossible de copier — sélectionne l’URL manuellement');
+    showToast(t('shareCopyFail'));
   }
 }
 
@@ -138,14 +141,14 @@ function initClickReverseGeocode(map: mapboxgl.Map): void {
 
     const popup = new mapboxgl.Popup({ closeOnClick: true, offset: 12 })
       .setLngLat(e.lngLat)
-      .setHTML('<div class="popup-loading">Recherche d’adresse…</div>')
+      .setHTML(`<div class="popup-loading">${escapeHtml(t('popupLoading'))}</div>`)
       .addTo(map);
 
     void (async () => {
       try {
         const feature = await reverse(e.lngLat.lng, e.lngLat.lat, { signal: abortCtrl?.signal });
         if (!feature) {
-          popup.setHTML('<div>Aucune adresse trouvée</div>');
+          popup.setHTML(`<div>${escapeHtml(t('popupNoAddress'))}</div>`);
           return;
         }
         const name = feature.properties?.name ?? '—';
@@ -159,7 +162,7 @@ function initClickReverseGeocode(map: mapboxgl.Map): void {
         );
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        const msg = err instanceof GeocodingError ? err.message : 'Erreur réseau';
+        const msg = err instanceof GeocodingError ? err.message : t('searchNetworkError');
         popup.setHTML(`<div style="color:var(--danger)">${escapeHtml(msg)}</div>`);
       }
     })();
