@@ -2,6 +2,7 @@ import type { Map as MapboxMap } from 'mapbox-gl';
 import { showToast } from '@/ui/toast.ts';
 import type { IsochroneFeatureCollection, DirectionsProfile } from '@/types/mapbox.ts';
 import { t } from '@/i18n/index.ts';
+import type { DirectionsController } from '@/directions.ts';
 
 const SOURCE_ID = 'isochrone-src';
 const LAYER_ID = 'isochrone-fill';
@@ -12,7 +13,10 @@ export interface IsochroneController {
   destroy(): void;
 }
 
-export function initIsochrone(map: MapboxMap): IsochroneController {
+// BUG-003 v2 : si un controller Directions est passé, le 1er waypoint est
+// utilisé comme centre de calcul et le profil est synchronisé avec celui
+// d'Itinéraire. Sinon, comportement legacy (clic carte = centre).
+export function initIsochrone(map: MapboxMap, directions?: DirectionsController): IsochroneController {
   const toggleBtn = document.getElementById('btn-isochrone');
   const controls = document.getElementById('iso-controls');
   const profileSelect = document.getElementById('iso-profile') as HTMLSelectElement | null;
@@ -24,6 +28,28 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
   let abortCtrl: AbortController | undefined;
   let lastClick: { lng: number; lat: number } | null = null;
 
+  const currentProfile = (): IsoProfile => {
+    // Sync with Directions when available (BUG-003 v2).
+    const fromDir = directions?.getProfile();
+    if (fromDir && (fromDir === 'driving' || fromDir === 'walking' || fromDir === 'cycling')) {
+      return fromDir;
+    }
+    return profile;
+  };
+
+  const refreshFromDirections = (): void => {
+    if (!active) return;
+    const wps = directions?.getWaypoints() ?? [];
+    if (wps.length > 0) {
+      const start = wps[0]!;
+      lastClick = { lng: start.lng, lat: start.lat };
+      void compute(start.lng, start.lat);
+    } else {
+      removeLayer();
+      lastClick = null;
+    }
+  };
+
   profileSelect.addEventListener('change', () => {
     profile = (profileSelect.value as IsoProfile) || 'walking';
     if (lastClick) void compute(lastClick.lng, lastClick.lat);
@@ -33,10 +59,24 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
     active = !active;
     toggleBtn.classList.toggle('active', active);
     controls.hidden = !active;
-    map.getCanvas().style.cursor = active ? 'crosshair' : '';
     if (active) {
-      showToast(t('isoHint'));
+      const wps = directions?.getWaypoints() ?? [];
+      if (wps.length > 0) {
+        toggleBtn.removeAttribute('title');
+        map.getCanvas().style.cursor = '';
+        const start = wps[0]!;
+        lastClick = { lng: start.lng, lat: start.lat };
+        directions?.setIsoLegendVisible(true);
+        void compute(start.lng, start.lat);
+      } else {
+        toggleBtn.setAttribute('title', t('isoNeedWaypoint'));
+        map.getCanvas().style.cursor = 'crosshair';
+        showToast(t('isoHint'));
+      }
     } else {
+      toggleBtn.removeAttribute('title');
+      map.getCanvas().style.cursor = '';
+      directions?.setIsoLegendVisible(false);
       removeLayer();
       lastClick = null;
     }
@@ -47,8 +87,13 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
     lastClick = null;
   });
 
+  // React to Directions changes (waypoint added/removed/dragged, profile change).
+  window.addEventListener('mapbox3d:directions-change', refreshFromDirections);
+
   const onClick = (e: mapboxgl.MapMouseEvent): void => {
     if (!active) return;
+    // Skip standalone clicks when the Directions panel is providing the start.
+    if (directions && (directions.getWaypoints().length ?? 0) > 0) return;
     e.preventDefault?.();
     lastClick = { lng: e.lngLat.lng, lat: e.lngLat.lat };
     void compute(e.lngLat.lng, e.lngLat.lat);
@@ -61,7 +106,7 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
     const url = new URL('/api/isochrone', window.location.origin);
     url.searchParams.set('lng', String(lng));
     url.searchParams.set('lat', String(lat));
-    url.searchParams.set('profile', profile);
+    url.searchParams.set('profile', currentProfile());
     url.searchParams.set('minutes', '10,20,30');
     try {
       const res = await fetch(url, { signal: abortCtrl.signal });
@@ -130,6 +175,7 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
     destroy: () => {
       removeLayer();
       map.off('click', onClick);
+      window.removeEventListener('mapbox3d:directions-change', refreshFromDirections);
       abortCtrl?.abort();
     },
   };

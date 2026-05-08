@@ -63,7 +63,10 @@ html, body {
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(92vw, 480px);
+  /* BUG-005 v2 : largeur fluide bornée par le viewport moins 16px de gutter,
+     garantit l'absence d'overflow horizontal même sous 320px. */
+  width: min(480px, calc(100vw - 16px));
+  max-width: 100%;
   z-index: 5;
 }
 
@@ -463,12 +466,40 @@ html, body {
   transform: translateY(0);
 }
 
-/* Action toast (BUG-003 — undo flow) */
+/* Action toast (BUG-003 — undo flow ; BUG-001 v2 — progress + clickable) */
 .toast--action {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 8px 8px 8px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.toast--clickable {
+  cursor: pointer;
+}
+.toast-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-progress {
+    animation-duration: 1ms !important;
+    transform: scaleX(1);
+  }
 }
 .toast-text {
   flex: 1;
@@ -508,13 +539,23 @@ html, body {
   gap: 6px;
   margin-top: 6px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  /* BUG-005 v2 : éviter de pousser le parent (.search-shell) au-delà de
+     sa largeur, et masquer la scrollbar pour un look propre sur mobile. */
+  max-width: 100%;
+  min-width: 0;
   padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.category-chips::-webkit-scrollbar {
+  display: none;
 }
 .cat-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  scroll-snap-align: start;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   color: var(--text);
@@ -598,6 +639,13 @@ html, body {
   gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--panel-border);
+}
+/* BUG-010 v2 : title + close button on the same row */
+.dir-panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .dir-panel-title { margin: 0; font-size: 14px; font-weight: 600; }
 .dir-profile-bar {
@@ -708,6 +756,42 @@ html, body {
 .dir-action:not([disabled]):hover { border-color: var(--accent); }
 .dir-action[disabled] { opacity: 0.4; cursor: not-allowed; }
 .dir-action.dir-clear:hover { color: var(--danger); border-color: var(--danger); }
+
+/* ---- Isochrone legend in Directions panel (BUG-003 v2) ---- */
+.iso-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--panel-border);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.iso-legend[hidden] {
+  display: none;
+}
+.iso-legend-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+}
+.iso-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, monospace;
+}
+.iso-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.4);
+}
+.iso-legend-swatch.iso-10 { background: rgba(74, 222, 128, 0.5); }
+.iso-legend-swatch.iso-20 { background: rgba(250, 204, 21, 0.45); }
+.iso-legend-swatch.iso-30 { background: rgba(248, 113, 113, 0.4); }
 
 /* ---- Isochrone controls ---- */
 .iso-controls {
@@ -952,7 +1036,7 @@ html, body {
   text-transform: capitalize;
 }
 
-/* ---- Auto preset button ---- */
+/* ---- Auto preset button (BUG-012 v2 hardening) ---- */
 .light-preset-bar button[data-preset="auto"] {
   margin-left: 4px;
   border-left: 1px solid var(--panel-border);
@@ -961,6 +1045,18 @@ html, body {
 .light-preset-bar button[data-preset="auto"]::before {
   content: '⏱ ';
   margin-right: 2px;
+}
+/* Override-strength rule : guarantees .active wins over the data-attribute
+   selector above. */
+.light-preset-bar button[data-preset="auto"].active {
+  background: var(--accent);
+  color: white;
+}
+/* Subtle ring on the preset that is currently driven by Auto. */
+.light-preset-bar button.preset-auto-driven {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  outline-style: dashed;
 }
 
 /* ---- Responsive ---- */
@@ -977,7 +1073,14 @@ html, body {
   .toolbar {
     bottom: auto;
     top: 76px;
+    /* BUG-005 v2 : ancrer à droite + autoriser le wrap pour ne pas déborder
+       à gauche sur des viewports < 270px (5 boutons × 44 + gaps = 252px). */
+    left: auto;
+    right: 8px;
     flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 16px);
   }
   .panel { width: 100vw; }
   .story-panel { width: 100vw; }

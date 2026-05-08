@@ -118,6 +118,30 @@ export const fr = {
 
   // App title h1 sr-only (BUG-011)
   appTitle: 'Carte Mapbox 3D photoréaliste',
+
+  // Fullscreen toggle (BUG-002 v2)
+  toolbarFullscreenEnter: 'Plein écran',
+  toolbarFullscreenExit: 'Quitter le plein écran',
+
+  // Style retry exponential — final failure (BUG-006 v2)
+  styleFailed: 'Le style 3D ne charge pas. Vérifiez votre connexion ou réessayez.',
+  retry: 'Réessayer',
+
+  // Geolocation timeout (BUG-008 v2)
+  geolocTimeout: 'Délai dépassé, réessayez.',
+
+  // URL preset invalid — named (BUG-009 v2)
+  presetInvalidNamed: (invalid: string, fallback: string): string =>
+    `Preset « ${invalid} » inconnu, fallback sur « ${fallback} »`,
+
+  // Isochrone hint when no waypoint yet (BUG-003 v2)
+  isoNeedWaypoint: "Posez d'abord un point de départ sur la carte",
+  isoLegendTitle: 'Zone accessible (min)',
+
+  // Auto preset — dynamic aria-label (BUG-012 v2)
+  autoActiveLabel: (currentPreset: string): string =>
+    `Mode Auto activé — preset actuel : ${currentPreset}`,
+  autoLabel: 'Mode Auto',
 };
 
 // Widened type: each property is `string` or its concrete function signature,

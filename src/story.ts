@@ -42,7 +42,18 @@ export interface StoryController {
   destroy(): void;
 }
 
-export function initStory(map: MapboxMap, preset: PresetController): StoryController {
+// BUG-011 v2 — Story Paris masque temporairement les autres panneaux pour
+// préserver l'immersion. À la sortie, restaurer ce qui était ouvert avant.
+export interface SidePanels {
+  favorites?: { isOpen(): boolean; open(): void; close(): void };
+  directions?: { isPanelOpen(): boolean; hidePanel(): void; showPanel(): void };
+}
+
+export function initStory(
+  map: MapboxMap,
+  preset: PresetController,
+  sidePanels: SidePanels = {}
+): StoryController {
   const toggleBtn = document.getElementById('btn-story');
   if (!toggleBtn) return { destroy: () => undefined };
 
@@ -51,6 +62,8 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
   let orbitRafId: number | undefined;
   let orbitGeneration = 0;
   let initialState: Camera & { preset: LightPreset } | null = null;
+  // Snapshot of which side panels were open at activation time.
+  let sidePanelsSnapshot: { favorites: boolean; directions: boolean } | null = null;
 
   // ---- Build the panel shell once ----
   const titleEl = h('h2', { class: 'story-title' }, [STORY.title]);
@@ -115,6 +128,13 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
       bearing: map.getBearing(),
       preset: preset.current(),
     };
+    // BUG-011 v2 : capture & masque les panneaux secondaires pour l'immersion.
+    sidePanelsSnapshot = {
+      favorites: sidePanels.favorites?.isOpen() ?? false,
+      directions: sidePanels.directions?.isPanelOpen() ?? false,
+    };
+    if (sidePanelsSnapshot.favorites) sidePanels.favorites?.close();
+    if (sidePanelsSnapshot.directions) sidePanels.directions?.hidePanel();
     root.hidden = false;
     document.addEventListener('keydown', onKey);
     showToast(t('storyHint'));
@@ -129,6 +149,12 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
     root.hidden = true;
     document.removeEventListener('keydown', onKey);
     setActiveCard(-1);
+    // BUG-011 v2 : restore the side panels that were open before Story.
+    if (sidePanelsSnapshot) {
+      if (sidePanelsSnapshot.favorites) sidePanels.favorites?.open();
+      if (sidePanelsSnapshot.directions) sidePanels.directions?.showPanel();
+      sidePanelsSnapshot = null;
+    }
     if (initialState) {
       adaptiveFlyTo(map, {
         center: [initialState.lng, initialState.lat],

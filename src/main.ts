@@ -7,16 +7,20 @@ import mapboxgl, { type MapMouseEvent } from 'mapbox-gl';
 import { initSearch } from '@/search.ts';
 import { initLightPresetBar, getStoredPreset, type PresetController } from '@/light-preset.ts';
 import { reverse, GeocodingError } from '@/geocoding.ts';
-import { bindToMap as bindUrlState, readHashStateWithErrors } from '@/url-state.ts';
+import {
+  bindToMap as bindUrlState,
+  readHashStateWithErrors,
+  serializeHash,
+} from '@/url-state.ts';
 import { initFavoritesPanel } from '@/favorites-ui.ts';
-import { showToast } from '@/ui/toast.ts';
+import { showToast, showActionToast } from '@/ui/toast.ts';
 import { initDirections } from '@/directions.ts';
 import { initSearchCategories } from '@/search-categories.ts';
 import { initIsochrone } from '@/isochrone.ts';
 import { initStory } from '@/story.ts';
 import { initAutoPreset } from '@/light-preset-auto.ts';
 import { initI18nUI, applyStaticTranslations } from '@/i18n-ui.ts';
-import { t } from '@/i18n/index.ts';
+import { t, onLangChange } from '@/i18n/index.ts';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
@@ -49,14 +53,21 @@ function showFatalError(title: string, ...lines: string[]): void {
 }
 
 function bootstrap(): void {
-  const { state: hashState, errors: hashErrors } = readHashStateWithErrors();
+  const { state: hashState, errors: hashErrors, invalidPresetValue } =
+    readHashStateWithErrors();
   const initialPreset = hashState?.preset ?? getStoredPreset('dusk');
-  // BUG-013: surface a non-blocking warning when the URL preset is invalid;
-  // the parser falls back to a default preset gracefully, but we want the
-  // user to know the URL parameter was ignored.
+  // BUG-009 v2: when the URL preset is invalid, show a 6s named toast
+  // immediately (the v1 setTimeout 500ms + 4s window was too easy to miss),
+  // and clean the hash so the next moveend doesn't keep re-pushing the
+  // same invalid value.
   if (hashErrors.includes('invalidPreset')) {
-    console.warn('[url-state] invalid preset in URL, using default');
-    setTimeout(() => showToast(t('presetInvalid'), 4000), 500);
+    const invalid = invalidPresetValue ?? '?';
+    console.warn('[url-state] invalid preset in URL', { invalid, fallback: initialPreset });
+    showToast(t('presetInvalidNamed', invalid, initialPreset), 6000);
+    if (hashState) {
+      const cleaned = serializeHash({ ...hashState, preset: initialPreset });
+      window.history.replaceState(null, '', `#${cleaned}`);
+    }
   }
 
   const map = new mapboxgl.Map({
@@ -75,22 +86,69 @@ function bootstrap(): void {
   }
 
   map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
-  map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+  // BUG-002 v2: replaced Mapbox FullscreenControl by a custom button targeting
+  // document.body — see initFullscreenButton() below. The Mapbox control only
+  // makes the canvas fullscreen, which hides our custom UI.
+  initFullscreenButton();
   const geolocate = new mapboxgl.GeolocateControl({
     positionOptions: { enableHighAccuracy: true },
     trackUserLocation: false,
     showUserHeading: true,
   });
   map.addControl(geolocate, 'top-right');
-  // BUG-012: surface a toast when the user denies the prompt or the device
-  // can't determine its position. Mapbox emits the standard PositionError
-  // shape on the 'error' event.
-  geolocate.on('error', (err: { code?: number } | undefined) => {
-    const code = err?.code;
-    showToast(code === 1 ? t('geolocDenied') : t('geolocUnavailable'), 3000);
+  // BUG-012 v1 + BUG-008 v2 : surface a toast when geolocation fails.
+  // Mapbox emits the browser PositionError on the 'error' event. The event
+  // payload may also be wrapped (`e.error.code`) on some versions, so we
+  // check both shapes defensively.
+  geolocate.on('error', (event: unknown) => {
+    const err = event as { code?: number; error?: { code?: number } } | undefined;
+    const code = err?.code ?? err?.error?.code;
+    let key: 'geolocDenied' | 'geolocUnavailable' | 'geolocTimeout';
+    if (code === 1) key = 'geolocDenied';
+    else if (code === 3) key = 'geolocTimeout';
+    else key = 'geolocUnavailable';
+    console.warn('[geolocate] error', { code, raw: event });
+    showToast(t(key), 4000);
   });
 
-  let styleRetried = false;
+  // BUG-006 v2: exponential backoff retry on style failures.
+  // Attempts: 1s, 2s, 4s. After 3 failed retries, surface a persistent
+  // toast with a manual "Retry" button that resets the cycle.
+  let styleRetryCount = 0;
+  let styleRetryScheduled = false;
+  let styleLoadedOnce = false;
+  const scheduleStyleRetry = (): void => {
+    if (styleRetryScheduled || styleRetryCount >= 3) return;
+    styleRetryScheduled = true;
+    const delay = 1000 * 2 ** styleRetryCount;
+    console.warn('[mapbox-style-retry]', { attempt: styleRetryCount + 1, delayMs: delay });
+    setTimeout(() => {
+      styleRetryScheduled = false;
+      styleRetryCount += 1;
+      try {
+        map.setStyle('mapbox://styles/mapbox/standard');
+      } catch (retryErr) {
+        console.warn('[mapbox-style-retry] setStyle threw', retryErr);
+      }
+    }, delay);
+  };
+  const showStylePersistentFailure = (): void => {
+    void (async () => {
+      const retried = await showActionToast(t('styleFailed'), t('retry'), {
+        durationMs: null,
+        clickAnywhere: false,
+      });
+      if (retried) {
+        styleRetryCount = 0;
+        try {
+          map.setStyle('mapbox://styles/mapbox/standard');
+        } catch (e) {
+          console.warn('[mapbox-style-retry] manual retry threw', e);
+        }
+      }
+    })();
+  };
+
   map.on('error', (e) => {
     const err = e.error as { status?: number; message?: string; url?: string } | undefined;
     const status = err?.status;
@@ -98,25 +156,26 @@ function bootstrap(): void {
       showFatalError(t('errTokenInvalid'), t('errTokenInvalidHint'), t('errTokenInvalidHelp'));
       return;
     }
-    // BUG-007: 503 (and other transient failures) on the style endpoint.
     const isStyleFailure =
       (status !== undefined && status >= 500 && status < 600) ||
       err?.url?.includes('/styles/v1/') ||
       err?.message?.toLowerCase().includes('style');
-    if (isStyleFailure && !styleRetried) {
-      styleRetried = true;
-      console.warn('[mapbox] style load failed', { status, url: err?.url, message: err?.message });
-      showToast(t('styleRetrying'), 4000);
-      setTimeout(() => {
-        try {
-          map.setStyle('mapbox://styles/mapbox/standard');
-        } catch (retryErr) {
-          console.warn('[mapbox] style retry failed', retryErr);
-        }
-      }, 3000);
+    if (!isStyleFailure || styleLoadedOnce) return;
+    console.warn('[mapbox-style-retry] failure', { status, url: err?.url, message: err?.message });
+    if (styleRetryCount === 0) showToast(t('styleRetrying'), 3000);
+    if (styleRetryCount < 3) {
+      scheduleStyleRetry();
+    } else {
+      showStylePersistentFailure();
     }
   });
+  map.on('style.load', () => {
+    styleLoadedOnce = true;
+    styleRetryCount = 0;
+  });
 
+  // Idempotent: re-run on every style.load (initial + retries) to re-add the
+  // DEM source, terrain and fog (a setStyle() wipes them).
   map.on('style.load', () => {
     if (!map.getSource('mapbox-dem')) {
       map.addSource('mapbox-dem', {
@@ -135,20 +194,61 @@ function bootstrap(): void {
       'space-color': '#000000',
       'star-intensity': 0.6,
     });
+  });
 
+  // One-shot bootstrap: feature modules attach DOM listeners and should not
+  // be re-initialised on style retries (BUG-006 v2 introduces such retries).
+  map.once('style.load', () => {
     const presetCtl = initLightPresetBar(map, initialPreset);
     initSearch(map);
     initClickReverseGeocode(map);
     bindUrlState(map, { getPreset: presetCtl.current });
     initShareButton();
-    initFavoritesPanel(map, presetCtl);
-    initDirections(map);
+    const favoritesCtl = initFavoritesPanel(map, presetCtl);
+    const directionsCtl = initDirections(map);
     initSearchCategories(map);
-    initIsochrone(map);
-    initStory(map, presetCtl);
+    initIsochrone(map, directionsCtl);
+    // BUG-011 v2 : pass refs so Story Paris can hide/restore the secondary
+    // panels for immersion.
+    initStory(map, presetCtl, { favorites: favoritesCtl, directions: directionsCtl });
     initAutoPreset(map, presetCtl);
     initI18nUI();
   });
+}
+
+// BUG-002 v2: keep custom UI visible in fullscreen by passing the whole body
+// to the Fullscreen API instead of Mapbox's canvas-only control.
+function initFullscreenButton(): void {
+  const btn = document.getElementById('btn-fullscreen');
+  if (!btn) return;
+  const enterIcon = btn.querySelector<SVGElement>('.fs-icon-enter');
+  const exitIcon = btn.querySelector<SVGElement>('.fs-icon-exit');
+
+  const sync = (): void => {
+    const inFs = Boolean(document.fullscreenElement);
+    btn.setAttribute('aria-pressed', String(inFs));
+    btn.setAttribute('aria-label', t(inFs ? 'toolbarFullscreenExit' : 'toolbarFullscreenEnter'));
+    btn.setAttribute('title', t(inFs ? 'toolbarFullscreenExit' : 'toolbarFullscreenEnter'));
+    if (enterIcon) enterIcon.toggleAttribute('hidden', inFs);
+    if (exitIcon) exitIcon.toggleAttribute('hidden', !inFs);
+  };
+
+  btn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      void document.body.requestFullscreen().catch((err: unknown) => {
+        console.warn('[fullscreen] enter failed', err);
+      });
+    } else {
+      void document.exitFullscreen().catch((err: unknown) => {
+        console.warn('[fullscreen] exit failed', err);
+      });
+    }
+  });
+
+  document.addEventListener('fullscreenchange', sync);
+  // Re-sync labels when language changes.
+  onLangChange(sync);
+  sync();
 }
 
 function initShareButton(): void {

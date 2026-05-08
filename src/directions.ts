@@ -19,6 +19,15 @@ interface Waypoint {
 export interface DirectionsController {
   toggle(): void;
   isActive(): boolean;
+  // Snapshot of the current waypoints (BUG-003 v2 — used by Isochrone to
+  // pick the start point + sync with Directions).
+  getWaypoints(): { lng: number; lat: number }[];
+  getProfile(): DirectionsProfile;
+  // Whether the panel is currently visible (BUG-011 v2 — used by Story).
+  isPanelOpen(): boolean;
+  hidePanel(): void;
+  showPanel(): void;
+  setIsoLegendVisible(visible: boolean): void;
   destroy(): void;
 }
 
@@ -31,11 +40,18 @@ export function initDirections(map: MapboxMap): DirectionsController {
   let cameraFollowToken = 0;
   const isFollowCancelled = (token: number): boolean => token !== cameraFollowToken;
 
+  // BUG-003 v2 : notify Isochrone (and any future consumer) when waypoints
+  // or profile change so it can resync its center / profile.
+  const notifyChange = (): void => {
+    window.dispatchEvent(new CustomEvent('mapbox3d:directions-change'));
+  };
+
   // ---- UI: panel + button ----
   const panel = buildPanel({
     profile,
     onProfileChange: (p) => {
       profile = p;
+      notifyChange();
       void recompute();
     },
     onClear: () => {
@@ -46,6 +62,15 @@ export function initDirections(map: MapboxMap): DirectionsController {
         const token = ++cameraFollowToken;
         followCamera(map, lastRoute, () => isFollowCancelled(token)).catch(() => undefined);
       }
+    },
+    onClose: () => {
+      // BUG-010 v2 : ferme le panneau sans toucher aux waypoints / route
+      // (utiliser « Effacer » pour reset). Désactive le mode pour ne plus
+      // capturer les clics carte.
+      active = false;
+      toggleBtn?.classList.remove('active');
+      panel.hide();
+      map.getCanvas().style.cursor = '';
     },
   });
 
@@ -86,12 +111,14 @@ export function initDirections(map: MapboxMap): DirectionsController {
       if (wp) {
         wp.lng = ll.lng;
         wp.lat = ll.lat;
+        notifyChange();
         void recompute();
       }
     });
     waypoints.push({ id, lng, lat, marker });
     renumber();
     panel.setWaypoints(waypoints, removeWaypoint);
+    notifyChange();
     void recompute();
   }
 
@@ -102,6 +129,7 @@ export function initDirections(map: MapboxMap): DirectionsController {
     waypoints.splice(idx, 1);
     renumber();
     panel.setWaypoints(waypoints, removeWaypoint);
+    notifyChange();
     void recompute();
   }
 
@@ -219,11 +247,18 @@ export function initDirections(map: MapboxMap): DirectionsController {
     panel.setWaypoints([], removeWaypoint);
     panel.setSummary(null);
     cameraFollowToken += 1; // cancels in-flight follow
+    notifyChange();
   }
 
   return {
     toggle: () => toggleBtn?.click(),
     isActive: () => active,
+    getWaypoints: () => waypoints.map((w) => ({ lng: w.lng, lat: w.lat })),
+    getProfile: () => profile,
+    isPanelOpen: () => panel.isOpen(),
+    hidePanel: () => panel.hide(),
+    showPanel: () => panel.show(),
+    setIsoLegendVisible: (visible) => panel.setIsoLegend(visible),
     destroy: () => {
       clearAll();
       map.off('click', onClick);
@@ -302,14 +337,17 @@ interface PanelOpts {
   onProfileChange: (p: DirectionsProfile) => void;
   onClear: () => void;
   onFollow: () => void;
+  onClose: () => void;
 }
 
 interface PanelHandle {
   show(): void;
   hide(): void;
+  isOpen(): boolean;
   setLoading(v: boolean): void;
   setWaypoints(items: Waypoint[], onRemove: (id: string) => void): void;
   setSummary(s: { durationLabel: string; distanceLabel: string } | null): void;
+  setIsoLegend(visible: boolean): void;
   destroy(): void;
 }
 
@@ -355,10 +393,39 @@ function buildPanel(opts: PanelOpts): PanelHandle {
   clearBtn.addEventListener('click', () => opts.onClear());
 
   const titleEl = h('h2', { class: 'dir-panel-title' }, [t('dirPanelTitle')]);
+
+  // BUG-010 v2 — close button identical to the other panels.
+  // Closing only hides the panel ; the waypoints + route stay in state so
+  // re-opening (toolbar toggle) restores everything as it was. Use the
+  // existing « Effacer » action to clear.
+  const closeBtn = h('button', {
+    type: 'button',
+    class: 'panel-close',
+    'aria-label': t('storyExit'),
+  }, ['×']);
+  closeBtn.addEventListener('click', () => opts.onClose());
+
+  // BUG-003 v2 — legend for the isochrone overlay (10 / 20 / 30 min).
+  const isoLegend = h('div', { class: 'iso-legend', hidden: true }, [
+    h('span', { class: 'iso-legend-title' }, [t('isoLegendTitle')]),
+    h('span', { class: 'iso-legend-row' }, [
+      h('span', { class: 'iso-legend-swatch iso-10' }, []),
+      '10',
+      h('span', { class: 'iso-legend-swatch iso-20' }, []),
+      '20',
+      h('span', { class: 'iso-legend-swatch iso-30' }, []),
+      '30',
+    ]),
+  ]);
+
   const root = h('aside', { class: 'dir-panel', hidden: true }, [
-    h('header', { class: 'dir-panel-header' }, [titleEl, profileBar]),
+    h('header', { class: 'dir-panel-header' }, [
+      h('div', { class: 'dir-panel-header-row' }, [titleEl, closeBtn]),
+      profileBar,
+    ]),
     list,
     summary,
+    isoLegend,
     h('div', { class: 'dir-actions' }, [followBtn, clearBtn]),
   ]);
   document.body.appendChild(root);
@@ -379,6 +446,10 @@ function buildPanel(opts: PanelOpts): PanelHandle {
     },
     hide: () => {
       root.hidden = true;
+    },
+    isOpen: () => !root.hidden,
+    setIsoLegend: (visible) => {
+      isoLegend.hidden = !visible;
     },
     setLoading: (v) => root.classList.toggle('dir-loading', v),
     setWaypoints: (items, onRemove) => {

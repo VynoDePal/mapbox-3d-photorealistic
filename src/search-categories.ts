@@ -38,7 +38,14 @@ export function initSearchCategories(map: MapboxMap): CategoryController {
   const markers: mapboxgl.Marker[] = [];
 
   const clearMarkers = (): void => {
-    markers.forEach((m) => m.remove());
+    // BUG-004 v2 : explicitly close any popup tied to a marker before
+    // removing it. mapboxgl's marker.remove() sometimes leaves an
+    // already-opened popup on the map; close them defensively.
+    markers.forEach((m) => {
+      const popup = m.getPopup();
+      if (popup?.isOpen()) popup.remove();
+      m.remove();
+    });
     markers.length = 0;
   };
 
