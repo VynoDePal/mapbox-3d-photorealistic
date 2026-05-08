@@ -27,11 +27,27 @@ export function serializeHash(state: MapState): string {
   ].join('/');
 }
 
-export function parseHash(hash: string): MapState | null {
+export type HashParseError = 'invalidPreset' | 'malformed' | 'outOfRange';
+
+export interface HashParseResult {
+  state: MapState | null;
+  errors: HashParseError[];
+}
+
+const DEFAULT_PRESET: LightPreset = 'dusk';
+
+// Permissive parser: when the only issue is an invalid preset, fall back to
+// `DEFAULT_PRESET` and surface 'invalidPreset' so the caller can warn the
+// user (BUG-013). Other malformed cases still return state=null.
+export function parseHashWithErrors(hash: string): HashParseResult {
+  const errors: HashParseError[] = [];
   const trimmed = hash.replace(/^#/, '').trim();
-  if (!trimmed) return null;
+  if (!trimmed) return { state: null, errors };
   const parts = trimmed.split('/');
-  if (parts.length !== 6) return null;
+  if (parts.length !== 6) {
+    errors.push('malformed');
+    return { state: null, errors };
+  }
   const [zoomStr, latStr, lngStr, pitchStr, bearingStr, presetStr] = parts as [
     string,
     string,
@@ -52,17 +68,42 @@ export function parseHash(hash: string): MapState | null {
     !Number.isFinite(pitch) ||
     !Number.isFinite(bearing)
   ) {
-    return null;
+    errors.push('malformed');
+    return { state: null, errors };
   }
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  if (zoom < 0 || zoom > 24) return null;
-  if (pitch < 0 || pitch > 85) return null;
-  if (!isPreset(presetStr)) return null;
-  return { zoom, lat, lng, pitch, bearing, preset: presetStr };
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    errors.push('outOfRange');
+    return { state: null, errors };
+  }
+  if (zoom < 0 || zoom > 24 || pitch < 0 || pitch > 85) {
+    errors.push('outOfRange');
+    return { state: null, errors };
+  }
+  let preset: LightPreset;
+  if (isPreset(presetStr)) {
+    preset = presetStr;
+  } else {
+    errors.push('invalidPreset');
+    preset = DEFAULT_PRESET;
+  }
+  return { state: { zoom, lat, lng, pitch, bearing, preset }, errors };
+}
+
+// Strict parser kept for backwards compatibility — returns null whenever any
+// part is invalid (including the preset). Used by tests that assert strict
+// validation; runtime callers should prefer `parseHashWithErrors`.
+export function parseHash(hash: string): MapState | null {
+  const { state, errors } = parseHashWithErrors(hash);
+  if (errors.includes('invalidPreset')) return null;
+  return state;
 }
 
 export function readHashState(): MapState | null {
   return parseHash(window.location.hash);
+}
+
+export function readHashStateWithErrors(): HashParseResult {
+  return parseHashWithErrors(window.location.hash);
 }
 
 // Trimmed mapbox-gl Map surface — keeps url-state independent of the full type.

@@ -1,12 +1,13 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
-import { add, list, remove, rename, type Favorite, type FavoriteInput } from '@/favorites.ts';
-import { createPanel, h, type PanelHandle } from '@/ui/panel.ts';
-import { showToast } from '@/ui/toast.ts';
+import { add, findByName, list, remove, rename, type Favorite, type FavoriteInput } from '@/favorites.ts';
+import { createPanel, h } from '@/ui/panel.ts';
+import { showToast, showActionToast } from '@/ui/toast.ts';
 import type { PresetController } from '@/light-preset.ts';
 import type { LightPreset } from '@/types/mapbox.ts';
 import { t } from '@/i18n/index.ts';
 import { adaptiveFlyTo } from '@/utils/motion.ts';
 import { onLangChange } from '@/i18n/index.ts';
+import { truncate } from '@/utils/format.ts';
 
 interface FavMap {
   getCenter(): { lng: number; lat: number };
@@ -33,7 +34,7 @@ export function initFavoritesPanel(map: MapboxMap, preset: PresetController): vo
   trigger.addEventListener('click', () => panel.toggle());
 
   const render = (): void => {
-    panel.setBody(buildBody(map as unknown as FavMap, preset, render, panel));
+    panel.setBody(buildBody(map as unknown as FavMap, preset, render));
   };
   render();
   onLangChange(() => render());
@@ -42,8 +43,7 @@ export function initFavoritesPanel(map: MapboxMap, preset: PresetController): vo
 function buildBody(
   map: FavMap,
   preset: PresetController,
-  rerender: () => void,
-  panel: PanelHandle
+  rerender: () => void
 ): HTMLElement {
   const wrapper = h('div', { class: 'fav-wrapper' });
 
@@ -53,6 +53,7 @@ function buildBody(
     placeholder: t('favPlaceholder'),
     'aria-label': t('favPlaceholder'),
     class: 'fav-input',
+    maxlength: 80, // BUG-009: cap user input
   }) as HTMLInputElement;
 
   const saveBtn = h('button', {
@@ -67,6 +68,12 @@ function buildBody(
       showToast(t('favSaveNeedName'));
       return;
     }
+    if (findByName(name)) {
+      nameInput.focus();
+      nameInput.select();
+      showToast(t('favDuplicate'));
+      return;
+    }
     const c = map.getCenter();
     const input: FavoriteInput = {
       name,
@@ -79,7 +86,7 @@ function buildBody(
     };
     add(input);
     nameInput.value = '';
-    showToast(t('favSaved', name));
+    showToast(t('favSaved', truncate(name, 40)));
     rerender();
   });
 
@@ -98,7 +105,7 @@ function buildBody(
   } else {
     const ul = h('ul', { class: 'fav-list' });
     for (const fav of items) {
-      ul.append(buildItem(fav, map, preset, rerender, panel));
+      ul.append(buildItem(fav, map, preset, rerender));
     }
     wrapper.append(ul);
   }
@@ -110,8 +117,7 @@ function buildItem(
   fav: Favorite,
   map: FavMap,
   preset: PresetController,
-  rerender: () => void,
-  panel: PanelHandle
+  rerender: () => void
 ): HTMLElement {
   const nameEl = h('span', { class: 'fav-name' }, [fav.name]);
   const presetChip = h('span', {
@@ -135,7 +141,8 @@ function buildItem(
       essential: true,
     });
     preset.set(fav.preset as LightPreset);
-    panel.close();
+    // BUG-010: keep the panel open so the user can chain navigations
+    // between favorites. Closing is up to the user (× / Escape).
   });
 
   const renameBtn = h(
@@ -144,11 +151,47 @@ function buildItem(
     [t('favRename')]
   );
   renameBtn.addEventListener('click', () => {
-    const next = window.prompt(t('favRenamePrompt'), fav.name);
-    if (next !== null && next.trim()) {
-      rename(fav.id, next);
-      rerender();
-    }
+    // Inline rename: swap the <span> for an editable <input>. Enter and blur
+    // commit, Escape cancels and restores the previous label. (BUG-004)
+    if (nameEl.parentElement?.querySelector('.fav-rename-input')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'fav-rename-input';
+    input.value = fav.name;
+    input.maxLength = 80;
+    input.setAttribute('aria-label', `${t('favRename')} — ${fav.name}`);
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = (): void => {
+      if (committed) return;
+      committed = true;
+      const next = input.value.trim();
+      if (next && next !== fav.name) {
+        rename(fav.id, next);
+        rerender();
+      } else {
+        // Restore the original span — no rerender needed when nothing changed.
+        input.replaceWith(nameEl);
+      }
+    };
+    const cancel = (): void => {
+      if (committed) return;
+      committed = true;
+      input.replaceWith(nameEl);
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancel();
+      }
+    });
+    input.addEventListener('blur', commit);
   });
 
   const delBtn = h(
@@ -156,14 +199,29 @@ function buildItem(
     { type: 'button', class: 'fav-btn fav-del', 'aria-label': `${t('favDelete')} — ${fav.name}` },
     [t('favDelete')]
   );
-  delBtn.addEventListener('click', () => {
-    remove(fav.id);
-    showToast(t('favRemoved', fav.name));
-    rerender();
-  });
 
-  return h('li', { class: 'fav-item' }, [
+  const li = h('li', { class: 'fav-item', dataset: { id: fav.id } }, [
     h('div', { class: 'fav-item-main' }, [nameEl, presetChip]),
     h('div', { class: 'fav-item-actions' }, [goBtn, renameBtn, delBtn]),
   ]);
+
+  delBtn.addEventListener('click', () => {
+    // Optimistic hide; actual remove fires after the undo window.
+    li.classList.add('fav-item--pending-delete');
+    void (async () => {
+      const undone = await showActionToast(
+        t('favRemoved', truncate(fav.name, 40)),
+        t('undo'),
+        5000
+      );
+      if (undone) {
+        li.classList.remove('fav-item--pending-delete');
+      } else {
+        remove(fav.id);
+        rerender();
+      }
+    })();
+  });
+
+  return li;
 }

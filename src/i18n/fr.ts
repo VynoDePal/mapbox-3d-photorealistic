@@ -99,6 +99,25 @@ export const fr = {
   // Misc
   popupNoAddress: 'Aucune adresse trouvée',
   popupLoading: 'Recherche d’adresse…',
+
+  // Style retry (BUG-007)
+  styleRetrying: 'Le style 3D met du temps à charger, nouvelle tentative…',
+
+  // Favorites — duplicate (BUG-001)
+  favDuplicate: 'Un favori avec ce nom existe déjà',
+
+  // Undo toast (BUG-003)
+  undo: 'Annuler',
+
+  // Geolocation errors (BUG-012)
+  geolocDenied: 'Géolocalisation refusée',
+  geolocUnavailable: 'Géolocalisation indisponible',
+
+  // URL preset invalid (BUG-013)
+  presetInvalid: "Preset d'éclairage inconnu, utilisation du preset par défaut",
+
+  // App title h1 sr-only (BUG-011)
+  appTitle: 'Carte Mapbox 3D photoréaliste',
 };
 
 // Widened type: each property is `string` or its concrete function signature,

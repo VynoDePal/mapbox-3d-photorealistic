@@ -1,8 +1,13 @@
+// Style retry strategy (BUG-007): the upstream `mapbox/standard` style
+// occasionally returns 503 at boot. Mapbox-gl retries internally once; if it
+// still fails to apply, we surface a non-blocking toast and trigger a single
+// `map.setStyle(...)` after 3s to give the CDN a chance to recover. Guarded
+// by a flag so we never loop.
 import mapboxgl, { type MapMouseEvent } from 'mapbox-gl';
 import { initSearch } from '@/search.ts';
 import { initLightPresetBar, getStoredPreset, type PresetController } from '@/light-preset.ts';
 import { reverse, GeocodingError } from '@/geocoding.ts';
-import { bindToMap as bindUrlState, readHashState } from '@/url-state.ts';
+import { bindToMap as bindUrlState, readHashStateWithErrors } from '@/url-state.ts';
 import { initFavoritesPanel } from '@/favorites-ui.ts';
 import { showToast } from '@/ui/toast.ts';
 import { initDirections } from '@/directions.ts';
@@ -44,8 +49,15 @@ function showFatalError(title: string, ...lines: string[]): void {
 }
 
 function bootstrap(): void {
-  const hashState = readHashState();
+  const { state: hashState, errors: hashErrors } = readHashStateWithErrors();
   const initialPreset = hashState?.preset ?? getStoredPreset('dusk');
+  // BUG-013: surface a non-blocking warning when the URL preset is invalid;
+  // the parser falls back to a default preset gracefully, but we want the
+  // user to know the URL parameter was ignored.
+  if (hashErrors.includes('invalidPreset')) {
+    console.warn('[url-state] invalid preset in URL, using default');
+    setTimeout(() => showToast(t('presetInvalid'), 4000), 500);
+  }
 
   const map = new mapboxgl.Map({
     container: 'map',
@@ -64,19 +76,44 @@ function bootstrap(): void {
 
   map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
   map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
-  map.addControl(
-    new mapboxgl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: false,
-      showUserHeading: true,
-    }),
-    'top-right'
-  );
+  const geolocate = new mapboxgl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: false,
+    showUserHeading: true,
+  });
+  map.addControl(geolocate, 'top-right');
+  // BUG-012: surface a toast when the user denies the prompt or the device
+  // can't determine its position. Mapbox emits the standard PositionError
+  // shape on the 'error' event.
+  geolocate.on('error', (err: { code?: number } | undefined) => {
+    const code = err?.code;
+    showToast(code === 1 ? t('geolocDenied') : t('geolocUnavailable'), 3000);
+  });
 
+  let styleRetried = false;
   map.on('error', (e) => {
-    const status = (e.error as { status?: number } | undefined)?.status;
+    const err = e.error as { status?: number; message?: string; url?: string } | undefined;
+    const status = err?.status;
     if (status === 401) {
       showFatalError(t('errTokenInvalid'), t('errTokenInvalidHint'), t('errTokenInvalidHelp'));
+      return;
+    }
+    // BUG-007: 503 (and other transient failures) on the style endpoint.
+    const isStyleFailure =
+      (status !== undefined && status >= 500 && status < 600) ||
+      err?.url?.includes('/styles/v1/') ||
+      err?.message?.toLowerCase().includes('style');
+    if (isStyleFailure && !styleRetried) {
+      styleRetried = true;
+      console.warn('[mapbox] style load failed', { status, url: err?.url, message: err?.message });
+      showToast(t('styleRetrying'), 4000);
+      setTimeout(() => {
+        try {
+          map.setStyle('mapbox://styles/mapbox/standard');
+        } catch (retryErr) {
+          console.warn('[mapbox] style retry failed', retryErr);
+        }
+      }, 3000);
     }
   });
 

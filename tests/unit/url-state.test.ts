@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseHash, serializeHash } from '@/url-state.ts';
+import { parseHash, parseHashWithErrors, serializeHash } from '@/url-state.ts';
 import type { MapState } from '@/types/mapbox.ts';
 
 describe('url-state', () => {
@@ -77,6 +77,39 @@ describe('url-state', () => {
       };
       const back = parseHash('#' + serializeHash(state));
       expect(back).toEqual(state);
+    });
+  });
+
+  describe('parseHashWithErrors (BUG-013)', () => {
+    it('returns state + invalidPreset when only the preset is invalid', () => {
+      const r = parseHashWithErrors('#16/48.8584/2.2945/70/-20/morning');
+      expect(r.errors).toContain('invalidPreset');
+      expect(r.state).not.toBeNull();
+      expect(r.state?.preset).toBe('dusk'); // default fallback
+      expect(r.state?.lng).toBeCloseTo(2.2945, 4);
+    });
+
+    it('returns null state with malformed for wrong part count', () => {
+      const r = parseHashWithErrors('#16/48/2/70/-20');
+      expect(r.errors).toContain('malformed');
+      expect(r.state).toBeNull();
+    });
+
+    it('returns null state with outOfRange for bad coords', () => {
+      const r = parseHashWithErrors('#16/95/2/70/-20/dusk');
+      expect(r.errors).toContain('outOfRange');
+      expect(r.state).toBeNull();
+    });
+
+    it('returns valid state with empty errors for a fully valid hash', () => {
+      const r = parseHashWithErrors('#16/48.85/2.29/70/-20/dusk');
+      expect(r.errors).toEqual([]);
+      expect(r.state?.preset).toBe('dusk');
+    });
+
+    it('returns null state and empty errors for empty hash', () => {
+      expect(parseHashWithErrors('')).toEqual({ state: null, errors: [] });
+      expect(parseHashWithErrors('#')).toEqual({ state: null, errors: [] });
     });
   });
 });
