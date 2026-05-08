@@ -26,7 +26,7 @@ Format des commits : `fix(qa-v2): BUG-00X (v2) — courte description`.
 
 | ID | Sévérité | Titre | Statut | Commit | Notes |
 |---|---|---|---|---|---|
-| BUG-001 (v2) | 🟡 Mineur | Toast Annuler trop court | TODO | — | 6s + barre progression + clic anywhere + pause focus |
+| BUG-001 (v2) | 🟡 Mineur | Toast Annuler trop court | ✅ DONE | _pending_ | Durée passée à 6000ms (call site favorites-ui), barre de progression CSS animée (`@keyframes toast-progress` scaleX 1→0), clic n'importe où sur le toast (`toast--clickable` + handler global), pause sur focus clavier (focusin/focusout dans showActionToast). Respect `prefers-reduced-motion`. |
 | BUG-002 (v2) | 🟠 Majeur | Toolbar masquée en plein écran | ✅ DONE | _pending_ | `FullscreenControl` Mapbox remplacé par bouton custom dans la toolbar. Cible : `document.body.requestFullscreen()` (toute l'UI déjà dans body, donc visible automatiquement). Listener `fullscreenchange` synchronise icône / aria-pressed / aria-label. Re-sync au changement de langue. |
 | BUG-003 (v2) | 🟡 Mineur | « Combien de temps ? » sans effet | TODO | — | Synchro Itinéraire (1er waypoint + profil) + légende |
 | BUG-004 (v2) | 🟡 Mineur | Popup POI persiste après désélection | TODO | — | `marker.getPopup()?.remove()` avant clearMarkers |

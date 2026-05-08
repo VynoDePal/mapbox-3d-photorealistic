@@ -212,7 +212,9 @@ function buildItem(
       const undone = await showActionToast(
         t('favRemoved', truncate(fav.name, 40)),
         t('undo'),
-        5000
+        // BUG-001 v2: 6s window with progress bar + click-anywhere to undo +
+        // pause-on-focus (handled inside showActionToast).
+        6000
       );
       if (undone) {
         li.classList.remove('fav-item--pending-delete');
