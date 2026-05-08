@@ -441,6 +441,39 @@ html, body {
   transform: translateY(0);
 }
 
+/* Action toast (BUG-003 — undo flow) */
+.toast--action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+}
+.toast-text {
+  flex: 1;
+  min-width: 0;
+}
+.toast-action-btn {
+  flex-shrink: 0;
+  background: var(--accent);
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toast-action-btn:hover { filter: brightness(1.1); }
+.toast-action-btn:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 1px;
+}
+
+/* Optimistic-hidden favorite during the undo window (BUG-003) */
+.fav-item--pending-delete {
+  display: none;
+}
+
 /* ---- Toolbar active state ---- */
 .toolbar-btn.active {
   background: var(--accent);

@@ -1,7 +1,7 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
 import { add, findByName, list, remove, rename, type Favorite, type FavoriteInput } from '@/favorites.ts';
 import { createPanel, h, type PanelHandle } from '@/ui/panel.ts';
-import { showToast } from '@/ui/toast.ts';
+import { showToast, showActionToast } from '@/ui/toast.ts';
 import type { PresetController } from '@/light-preset.ts';
 import type { LightPreset } from '@/types/mapbox.ts';
 import { t } from '@/i18n/index.ts';
@@ -163,14 +163,29 @@ function buildItem(
     { type: 'button', class: 'fav-btn fav-del', 'aria-label': `${t('favDelete')} — ${fav.name}` },
     [t('favDelete')]
   );
-  delBtn.addEventListener('click', () => {
-    remove(fav.id);
-    showToast(t('favRemoved', truncate(fav.name, 40)));
-    rerender();
-  });
 
-  return h('li', { class: 'fav-item' }, [
+  const li = h('li', { class: 'fav-item', dataset: { id: fav.id } }, [
     h('div', { class: 'fav-item-main' }, [nameEl, presetChip]),
     h('div', { class: 'fav-item-actions' }, [goBtn, renameBtn, delBtn]),
   ]);
+
+  delBtn.addEventListener('click', () => {
+    // Optimistic hide; actual remove fires after the undo window.
+    li.classList.add('fav-item--pending-delete');
+    void (async () => {
+      const undone = await showActionToast(
+        t('favRemoved', truncate(fav.name, 40)),
+        t('undo'),
+        5000
+      );
+      if (undone) {
+        li.classList.remove('fav-item--pending-delete');
+      } else {
+        remove(fav.id);
+        rerender();
+      }
+    })();
+  });
+
+  return li;
 }

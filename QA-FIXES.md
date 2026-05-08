@@ -8,7 +8,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 |---|---|---|---|---|---|
 | BUG-001 | 🟡 Mineur | Doublons de favoris autorisés | ✅ DONE | _pending_ | `findByName(name)` (case-insensitive, trim). Caller refuse + toast `favDuplicate` + `select()` de l'input pour faciliter la correction. 4 nouveaux tests. |
 | BUG-002 | 🟠 Majeur | Toast déborde avec nom long | ✅ DONE | _pending_ | `.toast` `max-width: min(420px, calc(100vw - 32px))` + `word-break: break-word` + `border-radius: 14px` (au lieu de pill 999px). Util `truncate(name, 40)` appliqué avant l'injection dans `favSaved`/`favRemoved`. 5 nouveaux tests unit. |
-| BUG-003 | 🟡 Mineur | Suppression sans confirmation | TODO | — | Action toast 5s avec « Annuler » |
+| BUG-003 | 🟡 Mineur | Suppression sans confirmation | ✅ DONE | _pending_ | Nouveau `showActionToast(message, label, duration)` dans `src/ui/toast.ts` retournant Promise<boolean>. Le `<li>` du favori reçoit `fav-item--pending-delete` (`display:none`) immédiatement ; à 5s sans clic Annuler, `remove()` + rerender. Si Annuler → restauration. Clés i18n `undo`. CSS `.toast--action` + `.toast-action-btn` ajoutés. |
 | BUG-004 | 🟡 Mineur | Renommage via prompt() natif | TODO | — | Édition inline du nom |
 | BUG-005 | 🟠 Majeur | Overflow horizontal mobile | ✅ DONE | _pending_ | `.dir-panel` overflow @ 320px (left:80 + width:92vw=294 = 374). Capped to `min(320px, calc(100vw - 96px))` desktop, `left:8/right:8` mobile. Same for `.iso-controls`. |
 | BUG-006 | 🟡 Mineur | Pas d'indicateur de focus | TODO | — | Already mostly fixed in Phase 5 (`ea9a8e1`) — retirer `outline:none` résiduel sur `#search-input` |

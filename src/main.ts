@@ -93,14 +93,12 @@ function bootstrap(): void {
       err?.message?.toLowerCase().includes('style');
     if (isStyleFailure && !styleRetried) {
       styleRetried = true;
-      // eslint-disable-next-line no-console
       console.warn('[mapbox] style load failed', { status, url: err?.url, message: err?.message });
       showToast(t('styleRetrying'), 4000);
       setTimeout(() => {
         try {
           map.setStyle('mapbox://styles/mapbox/standard');
         } catch (retryErr) {
-          // eslint-disable-next-line no-console
           console.warn('[mapbox] style retry failed', retryErr);
         }
       }, 3000);
