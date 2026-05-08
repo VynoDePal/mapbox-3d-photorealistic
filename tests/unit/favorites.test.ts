@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { add, list, remove, rename, clear, type FavoriteInput } from '@/favorites.ts';
+import { add, findByName, list, remove, rename, clear, type FavoriteInput } from '@/favorites.ts';
 
 const sample: FavoriteInput = {
   name: 'Tour Eiffel',
@@ -78,5 +78,28 @@ describe('favorites', () => {
     const items = list();
     expect(items).toHaveLength(1);
     expect(items[0]?.name).toBe('Tour Eiffel');
+  });
+
+  describe('findByName', () => {
+    it('returns the matching favorite (case-insensitive)', () => {
+      add(sample);
+      expect(findByName('TOUR EIFFEL')?.id).toBeDefined();
+      expect(findByName('  tour eiffel  ')?.name).toBe('Tour Eiffel');
+    });
+
+    it('returns null when no match', () => {
+      add(sample);
+      expect(findByName('Notre Dame')).toBeNull();
+    });
+
+    it('returns null on empty / whitespace name', () => {
+      add(sample);
+      expect(findByName('')).toBeNull();
+      expect(findByName('   ')).toBeNull();
+    });
+
+    it('returns null when storage is empty', () => {
+      expect(findByName('Tour Eiffel')).toBeNull();
+    });
   });
 });

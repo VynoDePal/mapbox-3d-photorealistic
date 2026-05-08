@@ -6,7 +6,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 
 | ID | Sévérité | Titre | Statut | Commit | Notes |
 |---|---|---|---|---|---|
-| BUG-001 | 🟡 Mineur | Doublons de favoris autorisés | TODO | — | Refus + toast (cf. plan validé) |
+| BUG-001 | 🟡 Mineur | Doublons de favoris autorisés | ✅ DONE | _pending_ | `findByName(name)` (case-insensitive, trim). Caller refuse + toast `favDuplicate` + `select()` de l'input pour faciliter la correction. 4 nouveaux tests. |
 | BUG-002 | 🟠 Majeur | Toast déborde avec nom long | ✅ DONE | _pending_ | `.toast` `max-width: min(420px, calc(100vw - 32px))` + `word-break: break-word` + `border-radius: 14px` (au lieu de pill 999px). Util `truncate(name, 40)` appliqué avant l'injection dans `favSaved`/`favRemoved`. 5 nouveaux tests unit. |
 | BUG-003 | 🟡 Mineur | Suppression sans confirmation | TODO | — | Action toast 5s avec « Annuler » |
 | BUG-004 | 🟡 Mineur | Renommage via prompt() natif | TODO | — | Édition inline du nom |

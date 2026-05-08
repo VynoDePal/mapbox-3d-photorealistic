@@ -1,5 +1,5 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
-import { add, list, remove, rename, type Favorite, type FavoriteInput } from '@/favorites.ts';
+import { add, findByName, list, remove, rename, type Favorite, type FavoriteInput } from '@/favorites.ts';
 import { createPanel, h, type PanelHandle } from '@/ui/panel.ts';
 import { showToast } from '@/ui/toast.ts';
 import type { PresetController } from '@/light-preset.ts';
@@ -66,6 +66,12 @@ function buildBody(
     if (!name) {
       nameInput.focus();
       showToast(t('favSaveNeedName'));
+      return;
+    }
+    if (findByName(name)) {
+      nameInput.focus();
+      nameInput.select();
+      showToast(t('favDuplicate'));
       return;
     }
     const c = map.getCenter();

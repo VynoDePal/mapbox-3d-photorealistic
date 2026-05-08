@@ -55,6 +55,13 @@ export function list(): Favorite[] {
   return load().sort((a, b) => b.createdAt - a.createdAt);
 }
 
+// Case-insensitive lookup used by the UI to refuse duplicates (BUG-001).
+export function findByName(name: string): Favorite | null {
+  const needle = name.trim().toLowerCase();
+  if (!needle) return null;
+  return load().find((f) => f.name.trim().toLowerCase() === needle) ?? null;
+}
+
 export type FavoriteInput = Omit<Favorite, 'id' | 'createdAt'>;
 
 export function add(input: FavoriteInput): Favorite {
