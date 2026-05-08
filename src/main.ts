@@ -5,6 +5,9 @@ import { reverse, GeocodingError } from '@/geocoding.ts';
 import { bindToMap as bindUrlState, readHashState } from '@/url-state.ts';
 import { initFavoritesPanel } from '@/favorites-ui.ts';
 import { showToast } from '@/ui/toast.ts';
+import { initDirections } from '@/directions.ts';
+import { initSearchCategories } from '@/search-categories.ts';
+import { initIsochrone } from '@/isochrone.ts';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
@@ -102,6 +105,9 @@ function bootstrap(): void {
     bindUrlState(map, { getPreset: presetCtl.current });
     initShareButton();
     initFavoritesPanel(map, presetCtl);
+    initDirections(map);
+    initSearchCategories(map);
+    initIsochrone(map);
   });
 }
 
