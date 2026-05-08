@@ -31,7 +31,7 @@ Format des commits : `fix(qa-v2): BUG-00X (v2) — courte description`.
 | BUG-003 (v2) | 🟡 Mineur | « Combien de temps ? » sans effet | TODO | — | Synchro Itinéraire (1er waypoint + profil) + légende |
 | BUG-004 (v2) | 🟡 Mineur | Popup POI persiste après désélection | TODO | — | `marker.getPopup()?.remove()` avant clearMarkers |
 | BUG-005 (v2) | 🟠 Majeur | Overflow mobile non corrigé | ✅ DONE | _pending_ | 3 ajustements : `.search-shell` → `width: min(480px, calc(100vw - 16px))` ; `.toolbar` mobile → `right: 8px; left: auto; flex-wrap: wrap; max-width: calc(100vw - 16px)` ; `.category-chips` → `max-width: 100%; min-width: 0; scrollbar masquée; scroll-snap`. |
-| BUG-006 (v2) | 🟠 Majeur | Retry mapbox/standard | TODO | — | Backoff exponentiel 1s/2s/4s + toast persistant + bouton |
+| BUG-006 (v2) | 🟠 Majeur | Retry mapbox/standard | ✅ DONE | _pending_ | Refactor du handler error : `styleRetryCount` 0→3, `setTimeout(retry, 1000 * 2^count)` (1s, 2s, 4s). Après 3 échecs, `showActionToast(styleFailed, retry, { durationMs: null })` persistant + click sur « Réessayer » reset le compteur. `console.warn('[mapbox-style-retry]', ...)` à chaque étape. `style.load` reset compteur. Bootstrap modules splitted : DEM/terrain/fog idempotent (re-run sur retry), feature modules en `map.once`. `showActionToast` étendu pour accepter `durationMs: null` + opt `clickAnywhere`. |
 | BUG-007 (v2) | 🟡 Mineur | Escape 2-step non corrigé | TODO | — | Re-vérif + E2E robuste |
 | BUG-008 (v2) | 🔵 Cosmétique | Toast géoloc | TODO | — | Re-vérif + 3 codes (1/2/3) + E2E mock |
 | BUG-009 (v2) | 🔵 Cosmétique | Preset URL invalide | TODO | — | Toast 6s immédiat + cleanup hash + message nominatif |

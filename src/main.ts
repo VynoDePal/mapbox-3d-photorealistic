@@ -9,7 +9,7 @@ import { initLightPresetBar, getStoredPreset, type PresetController } from '@/li
 import { reverse, GeocodingError } from '@/geocoding.ts';
 import { bindToMap as bindUrlState, readHashStateWithErrors } from '@/url-state.ts';
 import { initFavoritesPanel } from '@/favorites-ui.ts';
-import { showToast } from '@/ui/toast.ts';
+import { showToast, showActionToast } from '@/ui/toast.ts';
 import { initDirections } from '@/directions.ts';
 import { initSearchCategories } from '@/search-categories.ts';
 import { initIsochrone } from '@/isochrone.ts';
@@ -93,7 +93,44 @@ function bootstrap(): void {
     showToast(code === 1 ? t('geolocDenied') : t('geolocUnavailable'), 3000);
   });
 
-  let styleRetried = false;
+  // BUG-006 v2: exponential backoff retry on style failures.
+  // Attempts: 1s, 2s, 4s. After 3 failed retries, surface a persistent
+  // toast with a manual "Retry" button that resets the cycle.
+  let styleRetryCount = 0;
+  let styleRetryScheduled = false;
+  let styleLoadedOnce = false;
+  const scheduleStyleRetry = (): void => {
+    if (styleRetryScheduled || styleRetryCount >= 3) return;
+    styleRetryScheduled = true;
+    const delay = 1000 * 2 ** styleRetryCount;
+    console.warn('[mapbox-style-retry]', { attempt: styleRetryCount + 1, delayMs: delay });
+    setTimeout(() => {
+      styleRetryScheduled = false;
+      styleRetryCount += 1;
+      try {
+        map.setStyle('mapbox://styles/mapbox/standard');
+      } catch (retryErr) {
+        console.warn('[mapbox-style-retry] setStyle threw', retryErr);
+      }
+    }, delay);
+  };
+  const showStylePersistentFailure = (): void => {
+    void (async () => {
+      const retried = await showActionToast(t('styleFailed'), t('retry'), {
+        durationMs: null,
+        clickAnywhere: false,
+      });
+      if (retried) {
+        styleRetryCount = 0;
+        try {
+          map.setStyle('mapbox://styles/mapbox/standard');
+        } catch (e) {
+          console.warn('[mapbox-style-retry] manual retry threw', e);
+        }
+      }
+    })();
+  };
+
   map.on('error', (e) => {
     const err = e.error as { status?: number; message?: string; url?: string } | undefined;
     const status = err?.status;
@@ -101,25 +138,26 @@ function bootstrap(): void {
       showFatalError(t('errTokenInvalid'), t('errTokenInvalidHint'), t('errTokenInvalidHelp'));
       return;
     }
-    // BUG-007: 503 (and other transient failures) on the style endpoint.
     const isStyleFailure =
       (status !== undefined && status >= 500 && status < 600) ||
       err?.url?.includes('/styles/v1/') ||
       err?.message?.toLowerCase().includes('style');
-    if (isStyleFailure && !styleRetried) {
-      styleRetried = true;
-      console.warn('[mapbox] style load failed', { status, url: err?.url, message: err?.message });
-      showToast(t('styleRetrying'), 4000);
-      setTimeout(() => {
-        try {
-          map.setStyle('mapbox://styles/mapbox/standard');
-        } catch (retryErr) {
-          console.warn('[mapbox] style retry failed', retryErr);
-        }
-      }, 3000);
+    if (!isStyleFailure || styleLoadedOnce) return;
+    console.warn('[mapbox-style-retry] failure', { status, url: err?.url, message: err?.message });
+    if (styleRetryCount === 0) showToast(t('styleRetrying'), 3000);
+    if (styleRetryCount < 3) {
+      scheduleStyleRetry();
+    } else {
+      showStylePersistentFailure();
     }
   });
+  map.on('style.load', () => {
+    styleLoadedOnce = true;
+    styleRetryCount = 0;
+  });
 
+  // Idempotent: re-run on every style.load (initial + retries) to re-add the
+  // DEM source, terrain and fog (a setStyle() wipes them).
   map.on('style.load', () => {
     if (!map.getSource('mapbox-dem')) {
       map.addSource('mapbox-dem', {
@@ -138,7 +176,11 @@ function bootstrap(): void {
       'space-color': '#000000',
       'star-intensity': 0.6,
     });
+  });
 
+  // One-shot bootstrap: feature modules attach DOM listeners and should not
+  // be re-initialised on style retries (BUG-006 v2 introduces such retries).
+  map.once('style.load', () => {
     const presetCtl = initLightPresetBar(map, initialPreset);
     initSearch(map);
     initClickReverseGeocode(map);
