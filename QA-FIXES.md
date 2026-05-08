@@ -23,6 +23,22 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 
 ## Tests de régression
 
-Fichier : `tests/e2e/qa-regression.spec.ts` (Playwright).
+Fichier : `tests/e2e/qa-regression.spec.ts` (Playwright). 7 tests couvrant :
 
-Couvre : viewports overflow (320/375/414/768/1366), nom 200 chars, doublon refusé, focus visible au Tab, Escape×2, maxLength 80, preset invalide.
+1. ✅ No horizontal overflow sur 5 viewports (320/375/414/768/1366) — BUG-002, 005
+2. ✅ Nom de favori 200 chars → pas d'overflow + toast contenu — BUG-002
+3. ✅ Doublon refusé (count localStorage = 1 après 2 saves identiques) — BUG-001
+4. ✅ Tab focus → outline visible sur au moins un contrôle — BUG-006
+5. ✅ Escape ×2 sur la recherche → input vidé — BUG-008
+6. ✅ maxLength 80 sur l'input nom — BUG-009
+7. ✅ URL preset invalide → app boote + console.warn — BUG-013
+
+Tous les tests démarrent en lisant `window.__map` (exposé en non-prod) et requièrent un token Mapbox valide via `VITE_MAPBOX_PUBLIC_TOKEN`.
+
+## Récap métriques
+
+| Métrique | Avant | Après |
+|---|---|---|
+| Tests unit | 77 | **91** (+14 : truncate ×5, findByName ×4, parseHashWithErrors ×5) |
+| Bundle app gzip | 13.03 KB | **14.08 KB** (+1 KB, 3.5% du budget 400 KB) |
+| Bugs critiques | 3 majeurs / 7 mineurs / 4 cosmétiques | **0** |
