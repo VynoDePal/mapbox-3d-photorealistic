@@ -1,28 +1,33 @@
-import { suggest, retrieve, GeocodingError } from './geocoding.js';
+import type { Map as MapboxMap } from 'mapbox-gl';
+import { suggest, retrieve, GeocodingError } from '@/geocoding.ts';
+import type { SearchBoxSuggestion } from '@/types/mapbox.ts';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
 
-export function initSearch(map) {
-  const input = document.getElementById('search-input');
-  const list = document.getElementById('search-results');
-  const spinner = document.getElementById('search-spinner');
+export function initSearch(map: MapboxMap): void {
+  const input = document.getElementById('search-input') as HTMLInputElement | null;
+  const list = document.getElementById('search-results') as HTMLUListElement | null;
+  const spinner = document.getElementById('search-spinner') as HTMLSpanElement | null;
+  if (!input || !list || !spinner) return;
 
-  let debounceId;
-  let abortCtrl;
+  let debounceId: number | undefined;
+  let abortCtrl: AbortController | undefined;
   let activeIndex = -1;
-  let suggestions = [];
+  let suggestions: SearchBoxSuggestion[] = [];
 
-  const setLoading = (loading) => spinner.classList.toggle('visible', loading);
+  const setLoading = (loading: boolean): void => {
+    spinner.classList.toggle('visible', loading);
+  };
 
-  const closeDropdown = () => {
+  const closeDropdown = (): void => {
     list.hidden = true;
     list.innerHTML = '';
     activeIndex = -1;
     suggestions = [];
   };
 
-  const renderError = (msg) => {
+  const renderError = (msg: string): void => {
     list.innerHTML = '';
     const li = document.createElement('li');
     li.className = 'no-result';
@@ -31,7 +36,7 @@ export function initSearch(map) {
     list.hidden = false;
   };
 
-  const renderSuggestions = (items) => {
+  const renderSuggestions = (items: SearchBoxSuggestion[]): void => {
     list.innerHTML = '';
     if (items.length === 0) {
       renderError('Aucun résultat');
@@ -39,7 +44,7 @@ export function initSearch(map) {
     }
     items.forEach((s, i) => {
       const li = document.createElement('li');
-      li.role = 'option';
+      li.setAttribute('role', 'option');
       li.dataset.index = String(i);
       const name = document.createElement('span');
       name.className = 'result-name';
@@ -48,19 +53,21 @@ export function initSearch(map) {
       detail.className = 'result-detail';
       detail.textContent = s.place_formatted ?? s.full_address ?? '';
       li.append(name, detail);
-      li.addEventListener('click', () => choose(i));
+      li.addEventListener('click', () => {
+        void choose(i);
+      });
       list.appendChild(li);
     });
     list.hidden = false;
   };
 
-  const updateSelection = () => {
-    [...list.children].forEach((el, i) => {
+  const updateSelection = (): void => {
+    Array.from(list.children).forEach((el, i) => {
       el.setAttribute('aria-selected', String(i === activeIndex));
     });
   };
 
-  const choose = async (index) => {
+  const choose = async (index: number): Promise<void> => {
     const item = suggestions[index];
     if (!item) return;
     setLoading(true);
@@ -85,8 +92,8 @@ export function initSearch(map) {
     }
   };
 
-  const runSearch = async (query) => {
-    if (abortCtrl) abortCtrl.abort();
+  const runSearch = async (query: string): Promise<void> => {
+    abortCtrl?.abort();
     abortCtrl = new AbortController();
     setLoading(true);
     try {
@@ -94,7 +101,7 @@ export function initSearch(map) {
       suggestions = items;
       renderSuggestions(items);
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       renderError(err instanceof GeocodingError ? err.message : 'Erreur réseau');
     } finally {
       setLoading(false);
@@ -103,12 +110,14 @@ export function initSearch(map) {
 
   input.addEventListener('input', () => {
     const query = input.value.trim();
-    clearTimeout(debounceId);
+    if (debounceId !== undefined) clearTimeout(debounceId);
     if (query.length < MIN_CHARS) {
       closeDropdown();
       return;
     }
-    debounceId = setTimeout(() => runSearch(query), DEBOUNCE_MS);
+    debounceId = window.setTimeout(() => {
+      void runSearch(query);
+    }, DEBOUNCE_MS);
   });
 
   input.addEventListener('keydown', (e) => {
@@ -123,8 +132,8 @@ export function initSearch(map) {
       updateSelection();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (activeIndex >= 0) choose(activeIndex);
-      else if (suggestions.length > 0) choose(0);
+      if (activeIndex >= 0) void choose(activeIndex);
+      else if (suggestions.length > 0) void choose(0);
     } else if (e.key === 'Escape') {
       closeDropdown();
       input.blur();
@@ -132,6 +141,7 @@ export function initSearch(map) {
   });
 
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.search-shell')) closeDropdown();
+    const target = e.target as HTMLElement | null;
+    if (!target?.closest('.search-shell')) closeDropdown();
   });
 }

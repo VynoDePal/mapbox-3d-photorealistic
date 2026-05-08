@@ -15,6 +15,17 @@ dist-ssr
 # Env (token Mapbox)
 .env
 .env.local
+.env.test
+server/.dev.vars
+
+# Tests artifacts
+coverage
+playwright-report
+test-results
+.playwright
+
+# Wrangler
+.wrangler
 
 
 # Editor directories and files

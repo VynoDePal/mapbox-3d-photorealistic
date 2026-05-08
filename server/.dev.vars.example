@@ -1,0 +1,3 @@
+# Renommer en .dev.vars pour le dev local (wrangler dev)
+# En prod : utiliser `wrangler secret put MAPBOX_SECRET_TOKEN`
+MAPBOX_SECRET_TOKEN=pk.your_secret_token_here
