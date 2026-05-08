@@ -63,6 +63,15 @@ export function initDirections(map: MapboxMap): DirectionsController {
         followCamera(map, lastRoute, () => isFollowCancelled(token)).catch(() => undefined);
       }
     },
+    onClose: () => {
+      // BUG-010 v2 : ferme le panneau sans toucher aux waypoints / route
+      // (utiliser « Effacer » pour reset). Désactive le mode pour ne plus
+      // capturer les clics carte.
+      active = false;
+      toggleBtn?.classList.remove('active');
+      panel.hide();
+      map.getCanvas().style.cursor = '';
+    },
   });
 
   const toggleBtn = document.getElementById('btn-directions');
@@ -328,6 +337,7 @@ interface PanelOpts {
   onProfileChange: (p: DirectionsProfile) => void;
   onClear: () => void;
   onFollow: () => void;
+  onClose: () => void;
 }
 
 interface PanelHandle {
@@ -384,6 +394,17 @@ function buildPanel(opts: PanelOpts): PanelHandle {
 
   const titleEl = h('h2', { class: 'dir-panel-title' }, [t('dirPanelTitle')]);
 
+  // BUG-010 v2 — close button identical to the other panels.
+  // Closing only hides the panel ; the waypoints + route stay in state so
+  // re-opening (toolbar toggle) restores everything as it was. Use the
+  // existing « Effacer » action to clear.
+  const closeBtn = h('button', {
+    type: 'button',
+    class: 'panel-close',
+    'aria-label': t('storyExit'),
+  }, ['×']);
+  closeBtn.addEventListener('click', () => opts.onClose());
+
   // BUG-003 v2 — legend for the isochrone overlay (10 / 20 / 30 min).
   const isoLegend = h('div', { class: 'iso-legend', hidden: true }, [
     h('span', { class: 'iso-legend-title' }, [t('isoLegendTitle')]),
@@ -398,7 +419,10 @@ function buildPanel(opts: PanelOpts): PanelHandle {
   ]);
 
   const root = h('aside', { class: 'dir-panel', hidden: true }, [
-    h('header', { class: 'dir-panel-header' }, [titleEl, profileBar]),
+    h('header', { class: 'dir-panel-header' }, [
+      h('div', { class: 'dir-panel-header-row' }, [titleEl, closeBtn]),
+      profileBar,
+    ]),
     list,
     summary,
     isoLegend,

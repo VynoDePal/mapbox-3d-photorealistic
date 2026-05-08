@@ -35,7 +35,7 @@ Format des commits : `fix(qa-v2): BUG-00X (v2) — courte description`.
 | BUG-007 (v2) | 🟡 Mineur | Escape 2-step non corrigé | ✅ DONE | _pending_ | Code v1 déjà 2-step correct. Hardening : cancel `debounceId` + `abortCtrl?.abort()` pendant le clear pour éviter qu'une recherche en vol ne ré-ouvre la dropdown après Escape. Test E2E à étendre dans qa-regression. |
 | BUG-008 (v2) | 🔵 Cosmétique | Toast géoloc | TODO | — | Re-vérif + 3 codes (1/2/3) + E2E mock |
 | BUG-009 (v2) | 🔵 Cosmétique | Preset URL invalide | TODO | — | Toast 6s immédiat + cleanup hash + message nominatif |
-| BUG-010 (v2) | 🟡 Mineur | × sur Itinéraire | TODO | — | `panel-close` + conserver waypoints |
+| BUG-010 (v2) | 🟡 Mineur | × sur Itinéraire | ✅ DONE | _pending_ | `<button class="panel-close">×` ajouté en haut-droit du `dir-panel` (header-row flex). Au clic : `active = false`, retire `.active` du toggle btn, `panel.hide()`, reset cursor — **sans clearAll** : waypoints + route conservés en state. Re-cliquer la toolbar restaure le panneau identique. Le bouton « Effacer » existant garde sa fonction de reset complet. |
 | BUG-011 (v2) | 🔵 Cosmétique | Story ne masque pas Itin/Favoris | TODO | — | Mémoriser état + close + restore au sortie Story |
 | BUG-012 (v2) | 🔵 Cosmétique | Auto preset peu visible | TODO | — | `.active` confirm + liseré sur preset auto-driven + aria-label dynamique |
 

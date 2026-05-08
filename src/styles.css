@@ -640,6 +640,13 @@ html, body {
   padding: 12px 14px;
   border-bottom: 1px solid var(--panel-border);
 }
+/* BUG-010 v2 : title + close button on the same row */
+.dir-panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .dir-panel-title { margin: 0; font-size: 14px; font-weight: 600; }
 .dir-profile-bar {
   display: flex;
