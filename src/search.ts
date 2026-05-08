@@ -1,6 +1,8 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
 import { suggest, retrieve, GeocodingError } from '@/geocoding.ts';
 import type { SearchBoxSuggestion } from '@/types/mapbox.ts';
+import { t } from '@/i18n/index.ts';
+import { adaptiveFlyTo } from '@/utils/motion.ts';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
@@ -25,6 +27,8 @@ export function initSearch(map: MapboxMap): void {
     list.innerHTML = '';
     activeIndex = -1;
     suggestions = [];
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
   };
 
   const renderError = (msg: string): void => {
@@ -39,12 +43,13 @@ export function initSearch(map: MapboxMap): void {
   const renderSuggestions = (items: SearchBoxSuggestion[]): void => {
     list.innerHTML = '';
     if (items.length === 0) {
-      renderError('Aucun résultat');
+      renderError(t('searchNoResults'));
       return;
     }
     items.forEach((s, i) => {
       const li = document.createElement('li');
       li.setAttribute('role', 'option');
+      li.id = `search-result-${i}`;
       li.dataset.index = String(i);
       const name = document.createElement('span');
       name.className = 'result-name';
@@ -59,12 +64,18 @@ export function initSearch(map: MapboxMap): void {
       list.appendChild(li);
     });
     list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
   };
 
   const updateSelection = (): void => {
     Array.from(list.children).forEach((el, i) => {
       el.setAttribute('aria-selected', String(i === activeIndex));
     });
+    if (activeIndex >= 0) {
+      input.setAttribute('aria-activedescendant', `search-result-${activeIndex}`);
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
   };
 
   const choose = async (index: number): Promise<void> => {
@@ -76,7 +87,7 @@ export function initSearch(map: MapboxMap): void {
       const [lng, lat] = feature.geometry.coordinates;
       input.value = item.name ?? item.full_address ?? '';
       closeDropdown();
-      map.flyTo({
+      adaptiveFlyTo(map, {
         center: [lng, lat],
         zoom: 17,
         pitch: 70,
@@ -86,7 +97,7 @@ export function initSearch(map: MapboxMap): void {
         essential: true,
       });
     } catch (err) {
-      renderError(err instanceof GeocodingError ? err.message : 'Erreur réseau');
+      renderError(err instanceof GeocodingError ? err.message : t('searchNetworkError'));
     } finally {
       setLoading(false);
     }
@@ -102,7 +113,7 @@ export function initSearch(map: MapboxMap): void {
       renderSuggestions(items);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      renderError(err instanceof GeocodingError ? err.message : 'Erreur réseau');
+      renderError(err instanceof GeocodingError ? err.message : t('searchNetworkError'));
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,8 @@ import type { LightPreset } from '@/types/mapbox.ts';
 import type { PresetController } from '@/light-preset.ts';
 import { h } from '@/ui/panel.ts';
 import { showToast } from '@/ui/toast.ts';
+import { t } from '@/i18n/index.ts';
+import { adaptiveFlyTo, prefersReducedMotion } from '@/utils/motion.ts';
 import storyJson from '../stories/paris.json' with { type: 'json' };
 
 interface Camera {
@@ -57,8 +59,8 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
   const closeBtn = h('button', {
     type: 'button',
     class: 'story-close',
-    'aria-label': 'Quitter la story',
-  }, ['Quitter']);
+    'aria-label': t('storyExit'),
+  }, [t('storyExit')]);
   closeBtn.addEventListener('click', () => deactivate());
 
   const root = h('aside', {
@@ -115,7 +117,7 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
     };
     root.hidden = false;
     document.addEventListener('keydown', onKey);
-    showToast('Clique sur un chapitre — appuie Esc pour quitter');
+    showToast(t('storyHint'));
     if (STORY.chapters.length > 0) jumpTo(0);
   }
 
@@ -128,7 +130,7 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
     document.removeEventListener('keydown', onKey);
     setActiveCard(-1);
     if (initialState) {
-      map.flyTo({
+      adaptiveFlyTo(map, {
         center: [initialState.lng, initialState.lat],
         zoom: initialState.zoom,
         pitch: initialState.pitch,
@@ -156,10 +158,21 @@ export function initStory(map: MapboxMap, preset: PresetController): StoryContro
       duration: Math.min(chapter.durationMs, 6000),
       essential: true,
     };
-    if (useFlyTo) map.flyTo({ ...opts, curve: 1.42 });
-    else map.easeTo(opts);
+    if (prefersReducedMotion()) {
+      map.jumpTo({
+        center: opts.center,
+        zoom: opts.zoom,
+        pitch: opts.pitch,
+        bearing: opts.bearing,
+      });
+    } else if (useFlyTo) {
+      map.flyTo({ ...opts, curve: 1.42 });
+    } else {
+      map.easeTo(opts);
+    }
 
-    if (chapter.orbit) {
+    // Reduced motion: skip orbits — they're explicitly motion-heavy.
+    if (chapter.orbit && !prefersReducedMotion()) {
       const arrivalDelay = Math.min(chapter.durationMs, 6000);
       window.setTimeout(() => {
         if (activeIndex === index && active) startOrbit(chapter, chapter.orbit!);
