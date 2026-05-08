@@ -16,7 +16,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 | BUG-008 | 🟡 Mineur | Escape ne vide pas la barre de recherche | ✅ DONE | _pending_ | Handler keydown Escape sorti de la guard `list.hidden` early-return. 2-temps : (1) dropdown ouverte → close ; (2) sinon input non vide → clear + blur ; (3) input vide → no-op. |
 | BUG-009 | 🟡 Mineur | Pas de `maxLength` sur input « Nom du lieu » | ✅ DONE | _pending_ | `maxlength: 80` ajouté à `nameInput` dans `favorites-ui.ts` (et déjà sur l'input rename inline via BUG-004). Le `.trim()` + check empty existaient déjà. |
 | BUG-010 | 🟡 Mineur | « Aller » ferme le panneau Mes lieux | ✅ DONE | _pending_ | Retiré l'appel `panel.close()` du handler `goBtn`. Le panneau reste ouvert pour faciliter la navigation entre favoris. Dropping `panel` param de `buildBody`/`buildItem` (plus utilisé). |
-| BUG-011 | 🔵 Cosmétique | Pas de `<h1>` sur la page | TODO | — | `<h1 class="sr-only">` au début du body |
+| BUG-011 | 🔵 Cosmétique | Pas de `<h1>` sur la page | ✅ DONE | _pending_ | `<h1 class="sr-only" data-i18n="appTitle">` ajouté juste après le skip-link. CSS `.sr-only` standard (clip-rect + 1px). i18n FR/EN clé `appTitle`. |
 | BUG-012 | 🔵 Cosmétique | Pas de retour si géoloc refusée | TODO | — | Listener `error` du `GeolocateControl` + toast |
 | BUG-013 | 🔵 Cosmétique | Preset URL invalide silencieux | TODO | — | console.warn + toast au boot |
 | BUG-014 | 🔵 Cosmétique | Cibles tactiles trop petites mobile | TODO | — | `min-width/height: 44px` en `@media (max-width: 600px)` |
