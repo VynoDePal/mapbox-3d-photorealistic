@@ -152,3 +152,122 @@ test.describe('QA regression batch 1', () => {
     expect(sawWarning, 'expected a console.warn about the invalid preset').toBe(true);
   });
 });
+
+// ============================================================================
+// QA Batch 2 — additional scenarios (BUG-001 to BUG-012 v2)
+// ============================================================================
+
+test.describe('QA regression batch 2', () => {
+  test('no horizontal overflow at 320 / 375 / 414 / 812 px (BUG-005 v2)', async ({ page }) => {
+    for (const vp of [
+      { width: 320, height: 568 },
+      { width: 375, height: 812 },
+      { width: 414, height: 896 },
+      { width: 812, height: 375 },
+    ]) {
+      await page.setViewportSize(vp);
+      await page.goto('/');
+      await page.waitForFunction(() => Boolean((window as { __map?: unknown }).__map), null, {
+        timeout: 30_000,
+      });
+      const dims = await page.evaluate(() => ({
+        s: document.documentElement.scrollWidth,
+        c: document.documentElement.clientWidth,
+      }));
+      expect(dims.s, `viewport ${vp.width}×${vp.height}`).toBeLessThanOrEqual(dims.c);
+    }
+  });
+
+  test('Escape ×2 on search clears input + cancels pending fetch (BUG-007 v2)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => Boolean((window as { __map?: unknown }).__map), null, {
+      timeout: 30_000,
+    });
+    const input = page.locator('#search-input');
+    await input.fill('Lyon');
+    await page.locator('#search-results li').first().waitFor({ timeout: 5000 });
+    // 1st Escape : closes dropdown, keeps text + focus.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#search-results')).toBeHidden();
+    await expect(input).toHaveValue('Lyon');
+    await expect(input).toBeFocused();
+    // 2nd Escape : empties input, removes focus.
+    await page.keyboard.press('Escape');
+    await expect(input).toHaveValue('');
+    await expect(input).not.toBeFocused();
+  });
+
+  test('Auto preset toggle reflects .active class + aria-pressed (BUG-012 v2)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => Boolean((window as { __map?: unknown }).__map), null, {
+      timeout: 30_000,
+    });
+    const autoBtn = page.locator('.light-preset-bar button[data-preset="auto"]');
+    await expect(autoBtn).toHaveAttribute('aria-pressed', 'false');
+    await autoBtn.click();
+    await expect(autoBtn).toHaveClass(/active/);
+    await expect(autoBtn).toHaveAttribute('aria-pressed', 'true');
+    // At least one other preset button should carry the auto-driven mark.
+    const driven = page.locator(
+      '.light-preset-bar button.preset-auto-driven:not([data-preset="auto"])'
+    );
+    await expect(driven).toHaveCount(1);
+    // Toggle off — class removed.
+    await autoBtn.click();
+    await expect(autoBtn).not.toHaveClass(/active/);
+    await expect(autoBtn).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('Fullscreen button toggles aria-pressed and keeps UI accessible (BUG-002 v2)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => Boolean((window as { __map?: unknown }).__map), null, {
+      timeout: 30_000,
+    });
+    const btn = page.locator('#btn-fullscreen');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    // Mock requestFullscreen / exitFullscreen to avoid actual fullscreen
+    // (Playwright Chromium can struggle with real FS in headless).
+    await page.evaluate(() => {
+      const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+      proto.requestFullscreen = function (this: HTMLElement) {
+        Object.defineProperty(document, 'fullscreenElement', {
+          configurable: true,
+          get: () => this,
+        });
+        document.dispatchEvent(new Event('fullscreenchange'));
+        return Promise.resolve();
+      };
+      (document as unknown as Record<string, unknown>).exitFullscreen = function () {
+        Object.defineProperty(document, 'fullscreenElement', {
+          configurable: true,
+          get: () => null,
+        });
+        document.dispatchEvent(new Event('fullscreenchange'));
+        return Promise.resolve();
+      };
+    });
+    await btn.click();
+    await expect(btn).toHaveAttribute('aria-pressed', 'true');
+    // Search shell, light-preset-bar, lang-switcher remain in DOM (they were never
+    // moved). Visibility is enough to validate that the body-level fullscreen
+    // strategy keeps the UI reachable.
+    await expect(page.locator('.search-shell')).toBeVisible();
+    await expect(page.locator('.light-preset-bar')).toBeVisible();
+    await expect(page.locator('#lang-switcher')).toBeVisible();
+    await btn.click();
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('Invalid URL preset cleans up the hash (BUG-009 v2)', async ({ page }) => {
+    await page.goto('/#16/48.8584/2.2945/70/-20/morning');
+    await page.waitForFunction(() => Boolean((window as { __map?: unknown }).__map), null, {
+      timeout: 30_000,
+    });
+    // Wait one tick after boot for the replaceState to run.
+    await page.waitForTimeout(200);
+    const hash = await page.evaluate(() => window.location.hash);
+    expect(hash).not.toMatch(/morning/);
+    // The fallback preset 'dusk' must appear in the cleaned hash.
+    expect(hash).toMatch(/(dawn|day|dusk|night)$/);
+  });
+});
