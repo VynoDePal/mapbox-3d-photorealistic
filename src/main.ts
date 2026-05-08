@@ -1,7 +1,10 @@
 import mapboxgl, { type MapMouseEvent } from 'mapbox-gl';
 import { initSearch } from '@/search.ts';
-import { initLightPresetBar, getStoredPreset } from '@/light-preset.ts';
+import { initLightPresetBar, getStoredPreset, type PresetController } from '@/light-preset.ts';
 import { reverse, GeocodingError } from '@/geocoding.ts';
+import { bindToMap as bindUrlState, readHashState } from '@/url-state.ts';
+import { initFavoritesPanel } from '@/favorites-ui.ts';
+import { showToast } from '@/ui/toast.ts';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
@@ -34,15 +37,16 @@ function showFatalError(title: string, ...lines: string[]): void {
 }
 
 function bootstrap(): void {
-  const initialPreset = getStoredPreset('dusk');
+  const hashState = readHashState();
+  const initialPreset = hashState?.preset ?? getStoredPreset('dusk');
 
   const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/standard',
-    center: [2.2945, 48.8584],
-    zoom: 16,
-    pitch: 70,
-    bearing: -20,
+    center: hashState ? [hashState.lng, hashState.lat] : [2.2945, 48.8584],
+    zoom: hashState?.zoom ?? 16,
+    pitch: hashState?.pitch ?? 70,
+    bearing: hashState?.bearing ?? -20,
     antialias: true,
   });
 
@@ -92,10 +96,32 @@ function bootstrap(): void {
       'star-intensity': 0.6,
     });
 
-    initLightPresetBar(map, initialPreset);
+    const presetCtl = initLightPresetBar(map, initialPreset);
     initSearch(map);
     initClickReverseGeocode(map);
+    bindUrlState(map, { getPreset: presetCtl.current });
+    initShareButton();
+    initFavoritesPanel(map, presetCtl);
   });
+}
+
+function initShareButton(): void {
+  const btn = document.getElementById('btn-share');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    void copyCurrentUrl();
+  });
+}
+
+async function copyCurrentUrl(): Promise<void> {
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Lien copié');
+  } catch {
+    // Fallback if clipboard API is blocked (insecure context, permissions).
+    showToast('Impossible de copier — sélectionne l’URL manuellement');
+  }
 }
 
 function initClickReverseGeocode(map: mapboxgl.Map): void {
@@ -139,3 +165,6 @@ function escapeHtml(s: string): string {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c
   );
 }
+
+// Suppress unused-import warning when bundler tree-shakes; type used implicitly.
+export type { PresetController };

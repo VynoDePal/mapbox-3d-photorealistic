@@ -16,14 +16,22 @@ interface PresetCapableMap {
   setConfigProperty(importId: string, configName: string, value: unknown): void;
 }
 
-export function initLightPresetBar(map: PresetCapableMap, initial: LightPreset): void {
+export interface PresetController {
+  current: () => LightPreset;
+  set: (preset: LightPreset) => void;
+}
+
+export function initLightPresetBar(map: PresetCapableMap, initial: LightPreset): PresetController {
   const buttons = document.querySelectorAll<HTMLButtonElement>(
     '.light-preset-bar button[data-preset]'
   );
+  let active: LightPreset = initial;
   const apply = (preset: LightPreset): void => {
+    active = preset;
     map.setConfigProperty('basemap', 'lightPreset', preset);
     localStorage.setItem(STORAGE_KEY, preset);
     buttons.forEach((b) => b.classList.toggle('active', b.dataset.preset === preset));
+    window.dispatchEvent(new CustomEvent('mapbox3d:preset-change', { detail: preset }));
   };
   buttons.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -32,4 +40,8 @@ export function initLightPresetBar(map: PresetCapableMap, initial: LightPreset):
     });
   });
   apply(initial);
+  return {
+    current: () => active,
+    set: (preset) => apply(preset),
+  };
 }
