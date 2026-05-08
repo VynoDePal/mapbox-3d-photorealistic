@@ -69,14 +69,19 @@ function bootstrap(): void {
 
   map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
   map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
-  map.addControl(
-    new mapboxgl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: false,
-      showUserHeading: true,
-    }),
-    'top-right'
-  );
+  const geolocate = new mapboxgl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: false,
+    showUserHeading: true,
+  });
+  map.addControl(geolocate, 'top-right');
+  // BUG-012: surface a toast when the user denies the prompt or the device
+  // can't determine its position. Mapbox emits the standard PositionError
+  // shape on the 'error' event.
+  geolocate.on('error', (err: { code?: number } | undefined) => {
+    const code = err?.code;
+    showToast(code === 1 ? t('geolocDenied') : t('geolocUnavailable'), 3000);
+  });
 
   let styleRetried = false;
   map.on('error', (e) => {
