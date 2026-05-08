@@ -54,6 +54,7 @@ function buildBody(
     placeholder: t('favPlaceholder'),
     'aria-label': t('favPlaceholder'),
     class: 'fav-input',
+    maxlength: 80, // BUG-009: cap user input
   }) as HTMLInputElement;
 
   const saveBtn = h('button', {
