@@ -87,6 +87,8 @@ describe('url-state', () => {
       expect(r.state).not.toBeNull();
       expect(r.state?.preset).toBe('dusk'); // default fallback
       expect(r.state?.lng).toBeCloseTo(2.2945, 4);
+      // BUG-009 v2 — the raw invalid value is exposed for the toast.
+      expect(r.invalidPresetValue).toBe('morning');
     });
 
     it('returns null state with malformed for wrong part count', () => {

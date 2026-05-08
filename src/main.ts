@@ -7,7 +7,11 @@ import mapboxgl, { type MapMouseEvent } from 'mapbox-gl';
 import { initSearch } from '@/search.ts';
 import { initLightPresetBar, getStoredPreset, type PresetController } from '@/light-preset.ts';
 import { reverse, GeocodingError } from '@/geocoding.ts';
-import { bindToMap as bindUrlState, readHashStateWithErrors } from '@/url-state.ts';
+import {
+  bindToMap as bindUrlState,
+  readHashStateWithErrors,
+  serializeHash,
+} from '@/url-state.ts';
 import { initFavoritesPanel } from '@/favorites-ui.ts';
 import { showToast, showActionToast } from '@/ui/toast.ts';
 import { initDirections } from '@/directions.ts';
@@ -49,14 +53,21 @@ function showFatalError(title: string, ...lines: string[]): void {
 }
 
 function bootstrap(): void {
-  const { state: hashState, errors: hashErrors } = readHashStateWithErrors();
+  const { state: hashState, errors: hashErrors, invalidPresetValue } =
+    readHashStateWithErrors();
   const initialPreset = hashState?.preset ?? getStoredPreset('dusk');
-  // BUG-013: surface a non-blocking warning when the URL preset is invalid;
-  // the parser falls back to a default preset gracefully, but we want the
-  // user to know the URL parameter was ignored.
+  // BUG-009 v2: when the URL preset is invalid, show a 6s named toast
+  // immediately (the v1 setTimeout 500ms + 4s window was too easy to miss),
+  // and clean the hash so the next moveend doesn't keep re-pushing the
+  // same invalid value.
   if (hashErrors.includes('invalidPreset')) {
-    console.warn('[url-state] invalid preset in URL, using default');
-    setTimeout(() => showToast(t('presetInvalid'), 4000), 500);
+    const invalid = invalidPresetValue ?? '?';
+    console.warn('[url-state] invalid preset in URL', { invalid, fallback: initialPreset });
+    showToast(t('presetInvalidNamed', invalid, initialPreset), 6000);
+    if (hashState) {
+      const cleaned = serializeHash({ ...hashState, preset: initialPreset });
+      window.history.replaceState(null, '', `#${cleaned}`);
+    }
   }
 
   const map = new mapboxgl.Map({

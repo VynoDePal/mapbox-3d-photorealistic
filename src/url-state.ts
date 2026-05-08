@@ -32,6 +32,9 @@ export type HashParseError = 'invalidPreset' | 'malformed' | 'outOfRange';
 export interface HashParseResult {
   state: MapState | null;
   errors: HashParseError[];
+  // The raw invalid preset value (when errors includes 'invalidPreset').
+  // BUG-009 v2 — the caller surfaces this to the user via a named toast.
+  invalidPresetValue?: string;
 }
 
 const DEFAULT_PRESET: LightPreset = 'dusk';
@@ -80,13 +83,20 @@ export function parseHashWithErrors(hash: string): HashParseResult {
     return { state: null, errors };
   }
   let preset: LightPreset;
+  let invalidPresetValue: string | undefined;
   if (isPreset(presetStr)) {
     preset = presetStr;
   } else {
     errors.push('invalidPreset');
+    invalidPresetValue = presetStr;
     preset = DEFAULT_PRESET;
   }
-  return { state: { zoom, lat, lng, pitch, bearing, preset }, errors };
+  const result: HashParseResult = {
+    state: { zoom, lat, lng, pitch, bearing, preset },
+    errors,
+  };
+  if (invalidPresetValue !== undefined) result.invalidPresetValue = invalidPresetValue;
+  return result;
 }
 
 // Strict parser kept for backwards compatibility — returns null whenever any
