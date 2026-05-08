@@ -1,5 +1,6 @@
 import type { LightPreset } from '@/types/mapbox.ts';
 import type { PresetController } from '@/light-preset.ts';
+import { t, onLangChange } from '@/i18n/index.ts';
 
 // Map a 0-23 local hour to a lightPreset.
 // Boundaries chosen for natural transitions: dawn 5-7, day 7-18, dusk 18-21, night otherwise.
@@ -45,10 +46,43 @@ export function initAutoPreset(map: AutoMap, preset: PresetController): AutoCont
   let enabled = false;
   let intervalId: number | undefined;
 
+  // BUG-012 v2 — class .preset-auto-driven sur le bouton du preset que
+  // Auto pilote, pour montrer visuellement que ce preset est sous contrôle
+  // d'Auto (différent d'un preset choisi manuellement).
+  const allPresetButtons = document.querySelectorAll<HTMLButtonElement>(
+    '.light-preset-bar button[data-preset]'
+  );
+  const labelForPreset = (p: LightPreset): string => {
+    switch (p) {
+      case 'dawn': return t('presetDawn');
+      case 'day': return t('presetDay');
+      case 'dusk': return t('presetDusk');
+      case 'night': return t('presetNight');
+    }
+  };
+  const updateAutoDrivenMark = (currentPreset: LightPreset | null): void => {
+    allPresetButtons.forEach((b) => {
+      const isAutoBtn = b.dataset.preset === 'auto';
+      if (isAutoBtn) return;
+      b.classList.toggle('preset-auto-driven', currentPreset !== null && b.dataset.preset === currentPreset);
+    });
+  };
+  const updateAriaLabel = (): void => {
+    if (enabled) {
+      const current = presetForLngAt(map.getCenter().lng);
+      btn.setAttribute('aria-label', t('autoActiveLabel', labelForPreset(current)));
+    } else {
+      btn.setAttribute('aria-label', t('autoLabel'));
+    }
+  };
+
   const apply = (): void => {
     if (!enabled) return;
     const lng = map.getCenter().lng;
-    preset.set(presetForLngAt(lng));
+    const current = presetForLngAt(lng);
+    preset.set(current);
+    updateAutoDrivenMark(current);
+    updateAriaLabel();
   };
 
   const onMove = (): void => {
@@ -73,7 +107,12 @@ export function initAutoPreset(map: AutoMap, preset: PresetController): AutoCont
       window.clearInterval(intervalId);
       intervalId = undefined;
     }
+    updateAutoDrivenMark(null);
+    updateAriaLabel();
   };
+
+  // Re-render aria-label on language change.
+  onLangChange(updateAriaLabel);
 
   btn.addEventListener('click', () => (enabled ? disable() : enable()));
 
