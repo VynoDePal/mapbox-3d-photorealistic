@@ -683,6 +683,82 @@ html, body {
 }
 .iso-controls button:hover { color: var(--danger); border-color: var(--danger); }
 
+/* ---- Skip link (keyboard accessibility) ---- */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 8px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 100;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
+/* ---- Lang switcher (top-left) ---- */
+.lang-switcher {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 5;
+  font-size: 12px;
+}
+.lang-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: color 0.15s, background 0.15s;
+}
+.lang-btn:hover { color: var(--text); }
+.lang-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: white;
+}
+
+/* ---- Global focus-visible (a11y) ---- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Mapbox controls keep their native focus ring; we don't override them. */
+.mapboxgl-ctrl button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- Reduced motion: disable our CSS animations ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ---- Story panel ---- */
 .story-panel {
   position: absolute;
@@ -812,7 +888,8 @@ html, body {
 
 /* ---- Responsive ---- */
 @media (max-width: 600px) {
-  .search-shell { top: 10px; }
+  .search-shell { top: 56px; }
+  .lang-switcher { top: 10px; left: 10px; }
   .light-preset-bar {
     bottom: 12px;
     right: 8px;

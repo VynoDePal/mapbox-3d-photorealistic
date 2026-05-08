@@ -2,21 +2,22 @@ import mapboxgl, { type Map as MapboxMap } from 'mapbox-gl';
 import { showToast } from '@/ui/toast.ts';
 import { lngLatToParam } from '@/utils/geo.ts';
 import type { SearchBoxRetrieveFeature } from '@/types/mapbox.ts';
+import { t, onLangChange, type DictKey } from '@/i18n/index.ts';
 
 interface CategoryDef {
   id: string;
-  label: string;
+  labelKey: DictKey;
   icon: string;
   color: string;
 }
 
 // Mapbox Search Box canonical category IDs.
 const CATEGORIES: readonly CategoryDef[] = [
-  { id: 'restaurant', label: 'Restaurants', icon: '🍽', color: '#f87171' },
-  { id: 'hotel', label: 'Hôtels', icon: '🏨', color: '#a78bfa' },
-  { id: 'coffee', label: 'Cafés', icon: '☕', color: '#facc15' },
-  { id: 'museum', label: 'Musées', icon: '🏛', color: '#60a5fa' },
-  { id: 'park', label: 'Parcs', icon: '🌳', color: '#4ade80' },
+  { id: 'restaurant', labelKey: 'categoryRestaurants', icon: '🍽', color: '#f87171' },
+  { id: 'hotel', labelKey: 'categoryHotels', icon: '🏨', color: '#a78bfa' },
+  { id: 'coffee', labelKey: 'categoryCafes', icon: '☕', color: '#facc15' },
+  { id: 'museum', labelKey: 'categoryMuseums', icon: '🏛', color: '#60a5fa' },
+  { id: 'park', labelKey: 'categoryParks', icon: '🌳', color: '#4ade80' },
 ];
 
 interface CategoryResponse {
@@ -61,13 +62,13 @@ export function initSearchCategories(map: MapboxMap): CategoryController {
     try {
       const res = await fetch(url, { signal: abortCtrl.signal });
       if (!res.ok) {
-        showToast(`Erreur Catégories HTTP ${res.status}`);
+        showToast(t('dirHttpError', res.status));
         return;
       }
       const data = (await res.json()) as CategoryResponse;
       clearMarkers();
       if (data.features.length === 0) {
-        showToast(`Aucun ${def.label.toLowerCase()} à proximité`);
+        showToast(t('categoryNoneNearby', t(def.labelKey) as string));
         return;
       }
       data.features.forEach((f) => {
@@ -76,7 +77,7 @@ export function initSearchCategories(map: MapboxMap): CategoryController {
         el.className = 'cat-marker';
         el.style.background = def.color;
         el.textContent = def.icon;
-        el.setAttribute('aria-label', f.properties?.name ?? def.label);
+        el.setAttribute('aria-label', f.properties?.name ?? (t(def.labelKey) as string));
         const popup = new mapboxgl.Popup({ offset: 16 }).setHTML(
           `<div><strong>${escapeHtml(f.properties?.name ?? '—')}</strong></div>` +
             (f.properties?.full_address
@@ -91,18 +92,23 @@ export function initSearchCategories(map: MapboxMap): CategoryController {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      showToast('Erreur réseau (Catégories)');
+      showToast(t('searchNetworkError'));
     }
   };
 
   // Build chips
+  const chipLabels = new Map<string, HTMLSpanElement>();
   CATEGORIES.forEach((def) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'cat-chip';
     btn.dataset.category = def.id;
     btn.setAttribute('aria-pressed', 'false');
-    btn.innerHTML = `<span class="cat-chip-icon" style="background:${def.color}">${def.icon}</span><span>${def.label}</span>`;
+    const labelEl = document.createElement('span');
+    labelEl.textContent = t(def.labelKey) as string;
+    chipLabels.set(def.id, labelEl);
+    btn.innerHTML = `<span class="cat-chip-icon" style="background:${def.color}">${def.icon}</span>`;
+    btn.append(labelEl);
     btn.addEventListener('click', () => {
       if (activeCategory === def.id) {
         clearMarkers();
@@ -115,10 +121,19 @@ export function initSearchCategories(map: MapboxMap): CategoryController {
     container.append(btn);
   });
 
+  // Re-translate chip labels on language change.
+  const offLang = onLangChange(() => {
+    CATEGORIES.forEach((def) => {
+      const labelEl = chipLabels.get(def.id);
+      if (labelEl) labelEl.textContent = t(def.labelKey) as string;
+    });
+  });
+
   return {
     destroy: () => {
       clearMarkers();
       abortCtrl?.abort();
+      offLang();
     },
   };
 }

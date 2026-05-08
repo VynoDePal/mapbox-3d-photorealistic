@@ -1,6 +1,7 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
 import { showToast } from '@/ui/toast.ts';
 import type { IsochroneFeatureCollection, DirectionsProfile } from '@/types/mapbox.ts';
+import { t } from '@/i18n/index.ts';
 
 const SOURCE_ID = 'isochrone-src';
 const LAYER_ID = 'isochrone-fill';
@@ -34,7 +35,7 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
     controls.hidden = !active;
     map.getCanvas().style.cursor = active ? 'crosshair' : '';
     if (active) {
-      showToast('Clique sur la carte pour calculer la zone accessible');
+      showToast(t('isoHint'));
     } else {
       removeLayer();
       lastClick = null;
@@ -65,14 +66,14 @@ export function initIsochrone(map: MapboxMap): IsochroneController {
     try {
       const res = await fetch(url, { signal: abortCtrl.signal });
       if (!res.ok) {
-        showToast(`Erreur Isochrone HTTP ${res.status}`);
+        showToast(t('isoHttpError', res.status));
         return;
       }
       const data = (await res.json()) as IsochroneFeatureCollection;
       drawLayer(data);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      showToast('Erreur réseau (Isochrone)');
+      showToast(t('isoNetworkError'));
     }
   }
 

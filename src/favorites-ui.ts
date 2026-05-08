@@ -4,6 +4,9 @@ import { createPanel, h, type PanelHandle } from '@/ui/panel.ts';
 import { showToast } from '@/ui/toast.ts';
 import type { PresetController } from '@/light-preset.ts';
 import type { LightPreset } from '@/types/mapbox.ts';
+import { t } from '@/i18n/index.ts';
+import { adaptiveFlyTo } from '@/utils/motion.ts';
+import { onLangChange } from '@/i18n/index.ts';
 
 interface FavMap {
   getCenter(): { lng: number; lat: number };
@@ -19,19 +22,21 @@ interface FavMap {
     curve: number;
     essential: boolean;
   }): void;
+  jumpTo(opts: { center: [number, number]; zoom: number; pitch: number; bearing: number }): void;
 }
 
 export function initFavoritesPanel(map: MapboxMap, preset: PresetController): void {
   const trigger = document.getElementById('btn-favorites');
   if (!trigger) return;
 
-  const panel = createPanel({ title: 'Mes lieux', side: 'right' });
+  const panel = createPanel({ title: t('favPanelTitle'), side: 'right' });
   trigger.addEventListener('click', () => panel.toggle());
 
   const render = (): void => {
     panel.setBody(buildBody(map as unknown as FavMap, preset, render, panel));
   };
   render();
+  onLangChange(() => render());
 }
 
 function buildBody(
@@ -45,21 +50,21 @@ function buildBody(
   // "Save current view" form
   const nameInput = h('input', {
     type: 'text',
-    placeholder: 'Nom du lieu (ex : Notre-Dame)',
-    'aria-label': 'Nom du lieu',
+    placeholder: t('favPlaceholder'),
+    'aria-label': t('favPlaceholder'),
     class: 'fav-input',
   }) as HTMLInputElement;
 
   const saveBtn = h('button', {
     type: 'button',
     class: 'fav-save-btn',
-  }, ['+ Sauvegarder cette vue']);
+  }, [t('favSave')]);
 
   saveBtn.addEventListener('click', () => {
     const name = nameInput.value.trim();
     if (!name) {
       nameInput.focus();
-      showToast('Donne un nom au lieu d’abord');
+      showToast(t('favSaveNeedName'));
       return;
     }
     const c = map.getCenter();
@@ -74,7 +79,7 @@ function buildBody(
     };
     add(input);
     nameInput.value = '';
-    showToast(`« ${name} » sauvegardé`);
+    showToast(t('favSaved', name));
     rerender();
   });
 
@@ -89,11 +94,7 @@ function buildBody(
   // List of favorites
   const items = list();
   if (items.length === 0) {
-    wrapper.append(
-      h('p', { class: 'fav-empty' }, [
-        'Aucun lieu sauvegardé. Navigue sur la carte, ajuste l’angle, puis sauvegarde la vue.',
-      ])
-    );
+    wrapper.append(h('p', { class: 'fav-empty' }, [t('favEmpty')]));
   } else {
     const ul = h('ul', { class: 'fav-list' });
     for (const fav of items) {
@@ -118,9 +119,13 @@ function buildItem(
     dataset: { preset: fav.preset },
   }, [fav.preset]);
 
-  const goBtn = h('button', { type: 'button', class: 'fav-btn fav-go', 'aria-label': `Aller à ${fav.name}` }, ['Aller']);
+  const goBtn = h(
+    'button',
+    { type: 'button', class: 'fav-btn fav-go', 'aria-label': `${t('favGo')} — ${fav.name}` },
+    [t('favGo')]
+  );
   goBtn.addEventListener('click', () => {
-    map.flyTo({
+    adaptiveFlyTo(map, {
       center: [fav.lng, fav.lat],
       zoom: fav.zoom,
       pitch: fav.pitch,
@@ -133,27 +138,27 @@ function buildItem(
     panel.close();
   });
 
-  const renameBtn = h('button', {
-    type: 'button',
-    class: 'fav-btn fav-rename',
-    'aria-label': `Renommer ${fav.name}`,
-  }, ['✎']);
+  const renameBtn = h(
+    'button',
+    { type: 'button', class: 'fav-btn fav-rename', 'aria-label': `${t('favRename')} — ${fav.name}` },
+    [t('favRename')]
+  );
   renameBtn.addEventListener('click', () => {
-    const next = window.prompt('Nouveau nom :', fav.name);
+    const next = window.prompt(t('favRenamePrompt'), fav.name);
     if (next !== null && next.trim()) {
       rename(fav.id, next);
       rerender();
     }
   });
 
-  const delBtn = h('button', {
-    type: 'button',
-    class: 'fav-btn fav-del',
-    'aria-label': `Supprimer ${fav.name}`,
-  }, ['×']);
+  const delBtn = h(
+    'button',
+    { type: 'button', class: 'fav-btn fav-del', 'aria-label': `${t('favDelete')} — ${fav.name}` },
+    [t('favDelete')]
+  );
   delBtn.addEventListener('click', () => {
     remove(fav.id);
-    showToast(`« ${fav.name} » supprimé`);
+    showToast(t('favRemoved', fav.name));
     rerender();
   });
 
