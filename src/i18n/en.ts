@@ -85,4 +85,17 @@ export const en: Dict = {
 
   popupNoAddress: 'No address found',
   popupLoading: 'Looking up address…',
+
+  styleRetrying: 'The 3D style is slow to load, retrying…',
+
+  favDuplicate: 'A favorite with this name already exists',
+
+  undo: 'Undo',
+
+  geolocDenied: 'Geolocation denied',
+  geolocUnavailable: 'Geolocation unavailable',
+
+  presetInvalid: 'Unknown light preset, falling back to default',
+
+  appTitle: 'Photorealistic 3D Mapbox',
 };

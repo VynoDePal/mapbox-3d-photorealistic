@@ -1,3 +1,8 @@
+// Style retry strategy (BUG-007): the upstream `mapbox/standard` style
+// occasionally returns 503 at boot. Mapbox-gl retries internally once; if it
+// still fails to apply, we surface a non-blocking toast and trigger a single
+// `map.setStyle(...)` after 3s to give the CDN a chance to recover. Guarded
+// by a flag so we never loop.
 import mapboxgl, { type MapMouseEvent } from 'mapbox-gl';
 import { initSearch } from '@/search.ts';
 import { initLightPresetBar, getStoredPreset, type PresetController } from '@/light-preset.ts';
@@ -73,10 +78,32 @@ function bootstrap(): void {
     'top-right'
   );
 
+  let styleRetried = false;
   map.on('error', (e) => {
-    const status = (e.error as { status?: number } | undefined)?.status;
+    const err = e.error as { status?: number; message?: string; url?: string } | undefined;
+    const status = err?.status;
     if (status === 401) {
       showFatalError(t('errTokenInvalid'), t('errTokenInvalidHint'), t('errTokenInvalidHelp'));
+      return;
+    }
+    // BUG-007: 503 (and other transient failures) on the style endpoint.
+    const isStyleFailure =
+      (status !== undefined && status >= 500 && status < 600) ||
+      err?.url?.includes('/styles/v1/') ||
+      err?.message?.toLowerCase().includes('style');
+    if (isStyleFailure && !styleRetried) {
+      styleRetried = true;
+      // eslint-disable-next-line no-console
+      console.warn('[mapbox] style load failed', { status, url: err?.url, message: err?.message });
+      showToast(t('styleRetrying'), 4000);
+      setTimeout(() => {
+        try {
+          map.setStyle('mapbox://styles/mapbox/standard');
+        } catch (retryErr) {
+          // eslint-disable-next-line no-console
+          console.warn('[mapbox] style retry failed', retryErr);
+        }
+      }, 3000);
     }
   });
 

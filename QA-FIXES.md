@@ -12,7 +12,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 | BUG-004 | 🟡 Mineur | Renommage via prompt() natif | TODO | — | Édition inline du nom |
 | BUG-005 | 🟠 Majeur | Overflow horizontal mobile | ✅ DONE | _pending_ | `.dir-panel` overflow @ 320px (left:80 + width:92vw=294 = 374). Capped to `min(320px, calc(100vw - 96px))` desktop, `left:8/right:8` mobile. Same for `.iso-controls`. |
 | BUG-006 | 🟡 Mineur | Pas d'indicateur de focus | TODO | — | Already mostly fixed in Phase 5 (`ea9a8e1`) — retirer `outline:none` résiduel sur `#search-input` |
-| BUG-007 | 🟠 Majeur | 503 occasionnel sur `mapbox/standard` | TODO | — | Retry 3s + toast non-bloquant + console.warn |
+| BUG-007 | 🟠 Majeur | 503 occasionnel sur `mapbox/standard` | ✅ DONE | _pending_ | Handler `map.on('error')` étendu : détecte 5xx OU url `/styles/v1/` OU message « style ». `console.warn` structuré, toast `styleRetrying`, `map.setStyle('...standard')` après 3s. Flag `styleRetried` empêche la boucle. Commentaire explicatif en haut de main.ts. |
 | BUG-008 | 🟡 Mineur | Escape ne vide pas la barre de recherche | TODO | — | 2-temps : 1ère = ferme dropdown, 2ème = vide input + blur |
 | BUG-009 | 🟡 Mineur | Pas de `maxLength` sur input « Nom du lieu » | TODO | — | `maxlength="80"` |
 | BUG-010 | 🟡 Mineur | « Aller » ferme le panneau Mes lieux | TODO | — | Retirer `panel.close()` |
