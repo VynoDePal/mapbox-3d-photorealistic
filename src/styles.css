@@ -993,4 +993,18 @@ html, body {
     left: 8px;
     right: 8px;
   }
+  /* WCAG 2.5.5 / 2.5.8 — touch targets ≥ 44×44 px in mobile (BUG-014). */
+  .toolbar-btn,
+  .light-preset-bar button,
+  .fav-save-btn,
+  .fav-btn,
+  .lang-btn,
+  .panel-close,
+  .toast-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .toolbar { gap: 8px; }
+  .light-preset-bar { gap: 6px; }
+  .fav-item-actions { gap: 8px; }
 }

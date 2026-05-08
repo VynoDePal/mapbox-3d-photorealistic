@@ -19,7 +19,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 | BUG-011 | 🔵 Cosmétique | Pas de `<h1>` sur la page | ✅ DONE | _pending_ | `<h1 class="sr-only" data-i18n="appTitle">` ajouté juste après le skip-link. CSS `.sr-only` standard (clip-rect + 1px). i18n FR/EN clé `appTitle`. |
 | BUG-012 | 🔵 Cosmétique | Pas de retour si géoloc refusée | ✅ DONE | _pending_ | `GeolocateControl` réifié, listener `'error'` ajouté. Code 1 (denied) → `geolocDenied`, autres → `geolocUnavailable`. i18n FR/EN. |
 | BUG-013 | 🔵 Cosmétique | Preset URL invalide silencieux | ✅ DONE | _pending_ | Nouveau `parseHashWithErrors(hash)` retournant `{ state, errors[] }`. Si seul le preset est invalide → fallback `'dusk'` + `errors.push('invalidPreset')`. main.ts boot lit l'erreur, console.warn + toast `presetInvalid`. `parseHash` strict reste pour les tests. 5 nouveaux tests unit. |
-| BUG-014 | 🔵 Cosmétique | Cibles tactiles trop petites mobile | TODO | — | `min-width/height: 44px` en `@media (max-width: 600px)` |
+| BUG-014 | 🔵 Cosmétique | Cibles tactiles trop petites mobile | ✅ DONE | _pending_ | `@media (max-width: 600px)` ajoute `min-width: 44px; min-height: 44px` aux `.toolbar-btn`, `.light-preset-bar button`, `.fav-save-btn`, `.fav-btn`, `.lang-btn`, `.panel-close`, `.toast-action-btn`. `gap: 8px` sur toolbar/fav-actions, 6px sur light-preset. |
 
 ## Tests de régression
 
