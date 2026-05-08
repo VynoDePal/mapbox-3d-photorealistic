@@ -13,7 +13,7 @@ Branche : `fix/qa-batch-1`. Stratégie : un commit atomique par bug, format `fix
 | BUG-005 | 🟠 Majeur | Overflow horizontal mobile | ✅ DONE | _pending_ | `.dir-panel` overflow @ 320px (left:80 + width:92vw=294 = 374). Capped to `min(320px, calc(100vw - 96px))` desktop, `left:8/right:8` mobile. Same for `.iso-controls`. |
 | BUG-006 | 🟡 Mineur | Pas d'indicateur de focus | ✅ DONE | _pending_ | Mostly fixed in Phase 5 (`:focus-visible` global, commit `ea9a8e1`). Reste : `#search-input { outline: none }` ID-spécifique override. Remplacé par `#search-input:focus:not(:focus-visible) { outline: none }` qui supprime l'outline uniquement sur focus mouse, pas keyboard. |
 | BUG-007 | 🟠 Majeur | 503 occasionnel sur `mapbox/standard` | ✅ DONE | _pending_ | Handler `map.on('error')` étendu : détecte 5xx OU url `/styles/v1/` OU message « style ». `console.warn` structuré, toast `styleRetrying`, `map.setStyle('...standard')` après 3s. Flag `styleRetried` empêche la boucle. Commentaire explicatif en haut de main.ts. |
-| BUG-008 | 🟡 Mineur | Escape ne vide pas la barre de recherche | TODO | — | 2-temps : 1ère = ferme dropdown, 2ème = vide input + blur |
+| BUG-008 | 🟡 Mineur | Escape ne vide pas la barre de recherche | ✅ DONE | _pending_ | Handler keydown Escape sorti de la guard `list.hidden` early-return. 2-temps : (1) dropdown ouverte → close ; (2) sinon input non vide → clear + blur ; (3) input vide → no-op. |
 | BUG-009 | 🟡 Mineur | Pas de `maxLength` sur input « Nom du lieu » | TODO | — | `maxlength="80"` |
 | BUG-010 | 🟡 Mineur | « Aller » ferme le panneau Mes lieux | TODO | — | Retirer `panel.close()` |
 | BUG-011 | 🔵 Cosmétique | Pas de `<h1>` sur la page | TODO | — | `<h1 class="sr-only">` au début du body |

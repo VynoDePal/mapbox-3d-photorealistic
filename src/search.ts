@@ -132,6 +132,20 @@ export function initSearch(map: MapboxMap): void {
   });
 
   input.addEventListener('keydown', (e) => {
+    // Escape is handled in two stages (BUG-008):
+    //  1) if the suggestions dropdown is open → close it (keep the input value)
+    //  2) otherwise, if the input still has text → clear it and blur
+    if (e.key === 'Escape') {
+      if (!list.hidden) {
+        e.preventDefault();
+        closeDropdown();
+      } else if (input.value !== '') {
+        e.preventDefault();
+        input.value = '';
+        input.blur();
+      }
+      return;
+    }
     if (list.hidden || suggestions.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -145,9 +159,6 @@ export function initSearch(map: MapboxMap): void {
       e.preventDefault();
       if (activeIndex >= 0) void choose(activeIndex);
       else if (suggestions.length > 0) void choose(0);
-    } else if (e.key === 'Escape') {
-      closeDropdown();
-      input.blur();
     }
   });
 
