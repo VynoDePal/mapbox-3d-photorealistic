@@ -63,7 +63,10 @@ html, body {
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(92vw, 480px);
+  /* BUG-005 v2 : largeur fluide bornée par le viewport moins 16px de gutter,
+     garantit l'absence d'overflow horizontal même sous 320px. */
+  width: min(480px, calc(100vw - 16px));
+  max-width: 100%;
   z-index: 5;
 }
 
@@ -508,13 +511,23 @@ html, body {
   gap: 6px;
   margin-top: 6px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  /* BUG-005 v2 : éviter de pousser le parent (.search-shell) au-delà de
+     sa largeur, et masquer la scrollbar pour un look propre sur mobile. */
+  max-width: 100%;
+  min-width: 0;
   padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.category-chips::-webkit-scrollbar {
+  display: none;
 }
 .cat-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  scroll-snap-align: start;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   color: var(--text);
@@ -977,7 +990,14 @@ html, body {
   .toolbar {
     bottom: auto;
     top: 76px;
+    /* BUG-005 v2 : ancrer à droite + autoriser le wrap pour ne pas déborder
+       à gauche sur des viewports < 270px (5 boutons × 44 + gaps = 252px). */
+    left: auto;
+    right: 8px;
     flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 16px);
   }
   .panel { width: 100vw; }
   .story-panel { width: 100vw; }

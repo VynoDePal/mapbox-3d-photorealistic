@@ -30,7 +30,7 @@ Format des commits : `fix(qa-v2): BUG-00X (v2) — courte description`.
 | BUG-002 (v2) | 🟠 Majeur | Toolbar masquée en plein écran | TODO | — | Bouton custom + `document.body.requestFullscreen()` |
 | BUG-003 (v2) | 🟡 Mineur | « Combien de temps ? » sans effet | TODO | — | Synchro Itinéraire (1er waypoint + profil) + légende |
 | BUG-004 (v2) | 🟡 Mineur | Popup POI persiste après désélection | TODO | — | `marker.getPopup()?.remove()` avant clearMarkers |
-| BUG-005 (v2) | 🟠 Majeur | Overflow mobile non corrigé | TODO | — | Toolbar `flex-wrap` + ancrage droit, chips audit, breakpoints multiples |
+| BUG-005 (v2) | 🟠 Majeur | Overflow mobile non corrigé | ✅ DONE | _pending_ | 3 ajustements : `.search-shell` → `width: min(480px, calc(100vw - 16px))` ; `.toolbar` mobile → `right: 8px; left: auto; flex-wrap: wrap; max-width: calc(100vw - 16px)` ; `.category-chips` → `max-width: 100%; min-width: 0; scrollbar masquée; scroll-snap`. |
 | BUG-006 (v2) | 🟠 Majeur | Retry mapbox/standard | TODO | — | Backoff exponentiel 1s/2s/4s + toast persistant + bouton |
 | BUG-007 (v2) | 🟡 Mineur | Escape 2-step non corrigé | TODO | — | Re-vérif + E2E robuste |
 | BUG-008 (v2) | 🔵 Cosmétique | Toast géoloc | TODO | — | Re-vérif + 3 codes (1/2/3) + E2E mock |
