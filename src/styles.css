@@ -432,6 +432,257 @@ html, body {
   transform: translateY(0);
 }
 
+/* ---- Toolbar active state ---- */
+.toolbar-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* ---- Category chips ---- */
+.category-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.cat-chip:hover { border-color: var(--accent); }
+.cat-chip.active {
+  border-color: var(--accent);
+  background: rgba(66, 100, 251, 0.15);
+}
+.cat-chip-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+
+/* ---- Category POI markers ---- */
+.cat-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.cat-marker:hover { transform: scale(1.15); }
+
+/* ---- Waypoint markers (Directions) ---- */
+.wp-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  cursor: grab;
+}
+.wp-marker:active { cursor: grabbing; }
+
+/* ---- Directions panel (left side, below toolbar) ---- */
+.dir-panel {
+  position: absolute;
+  bottom: 24px;
+  left: 80px;
+  width: min(92vw, 320px);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+}
+.dir-panel[hidden] { display: none; }
+.dir-panel.dir-loading { opacity: 0.6; }
+.dir-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.dir-panel-title { margin: 0; font-size: 14px; font-weight: 600; }
+.dir-profile-bar {
+  display: flex;
+  gap: 4px;
+  background: rgba(0,0,0,0.3);
+  padding: 3px;
+  border-radius: 8px;
+}
+.dir-profile-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dir-profile-btn[aria-checked="true"] {
+  background: var(--accent);
+  color: white;
+}
+.dir-waypoints {
+  list-style: none;
+  margin: 0;
+  padding: 8px 14px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dir-wp-empty {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-style: italic;
+}
+.dir-wp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.dir-wp-num {
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  color: white;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.dir-wp-coords {
+  flex: 1;
+  color: var(--text-dim);
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 11px;
+}
+.dir-wp-del {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.dir-wp-del:hover { color: var(--danger); }
+.dir-summary {
+  padding: 10px 14px;
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dir-summary:empty { display: none; }
+.dir-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.dir-summary-key { color: var(--text-dim); }
+.dir-summary-val { font-weight: 600; color: var(--text); }
+.dir-actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--panel-border);
+}
+.dir-action {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dir-action:not([disabled]):hover { border-color: var(--accent); }
+.dir-action[disabled] { opacity: 0.4; cursor: not-allowed; }
+.dir-action.dir-clear:hover { color: var(--danger); border-color: var(--danger); }
+
+/* ---- Isochrone controls ---- */
+.iso-controls {
+  position: absolute;
+  bottom: 24px;
+  left: 80px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 5;
+  font-size: 13px;
+  color: var(--text);
+}
+.iso-controls[hidden] { display: none; }
+.iso-controls select {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.iso-controls button {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.iso-controls button:hover { color: var(--danger); border-color: var(--danger); }
+
 /* ---- Responsive ---- */
 @media (max-width: 600px) {
   .search-shell { top: 10px; }

@@ -27,6 +27,7 @@
         <span class="spinner" id="search-spinner" aria-hidden="true"></span>
       </div>
       <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+      <div id="category-chips" class="category-chips" role="group" aria-label="Catégories"></div>
     </div>
 
     <div class="light-preset-bar" role="group" aria-label="Éclairage">
@@ -47,6 +48,26 @@
           <path fill="currentColor" d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
         </svg>
       </button>
+      <button id="btn-directions" type="button" class="toolbar-btn" aria-label="Itinéraire" title="Itinéraire">
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+          <path fill="currentColor" d="m21.71 11.29-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42M14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5L17.5 11z"/>
+        </svg>
+      </button>
+      <button id="btn-isochrone" type="button" class="toolbar-btn" aria-label="Combien de temps ?" title="Combien de temps ?">
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+          <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8m.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="iso-controls" id="iso-controls" hidden>
+      <label for="iso-profile">Profil :</label>
+      <select id="iso-profile">
+        <option value="walking">Marche</option>
+        <option value="cycling">Vélo</option>
+        <option value="driving">Voiture</option>
+      </select>
+      <button id="iso-clear" type="button">Effacer</button>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
