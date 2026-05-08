@@ -8,6 +8,8 @@ import { showToast } from '@/ui/toast.ts';
 import { initDirections } from '@/directions.ts';
 import { initSearchCategories } from '@/search-categories.ts';
 import { initIsochrone } from '@/isochrone.ts';
+import { initStory } from '@/story.ts';
+import { initAutoPreset } from '@/light-preset-auto.ts';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
@@ -108,6 +110,8 @@ function bootstrap(): void {
     initDirections(map);
     initSearchCategories(map);
     initIsochrone(map);
+    initStory(map, presetCtl);
+    initAutoPreset(map, presetCtl);
   });
 }
 
