@@ -16,7 +16,7 @@ import { initIsochrone } from '@/isochrone.ts';
 import { initStory } from '@/story.ts';
 import { initAutoPreset } from '@/light-preset-auto.ts';
 import { initI18nUI, applyStaticTranslations } from '@/i18n-ui.ts';
-import { t } from '@/i18n/index.ts';
+import { t, onLangChange } from '@/i18n/index.ts';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
 
@@ -75,7 +75,10 @@ function bootstrap(): void {
   }
 
   map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
-  map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+  // BUG-002 v2: replaced Mapbox FullscreenControl by a custom button targeting
+  // document.body — see initFullscreenButton() below. The Mapbox control only
+  // makes the canvas fullscreen, which hides our custom UI.
+  initFullscreenButton();
   const geolocate = new mapboxgl.GeolocateControl({
     positionOptions: { enableHighAccuracy: true },
     trackUserLocation: false,
@@ -149,6 +152,41 @@ function bootstrap(): void {
     initAutoPreset(map, presetCtl);
     initI18nUI();
   });
+}
+
+// BUG-002 v2: keep custom UI visible in fullscreen by passing the whole body
+// to the Fullscreen API instead of Mapbox's canvas-only control.
+function initFullscreenButton(): void {
+  const btn = document.getElementById('btn-fullscreen');
+  if (!btn) return;
+  const enterIcon = btn.querySelector<SVGElement>('.fs-icon-enter');
+  const exitIcon = btn.querySelector<SVGElement>('.fs-icon-exit');
+
+  const sync = (): void => {
+    const inFs = Boolean(document.fullscreenElement);
+    btn.setAttribute('aria-pressed', String(inFs));
+    btn.setAttribute('aria-label', t(inFs ? 'toolbarFullscreenExit' : 'toolbarFullscreenEnter'));
+    btn.setAttribute('title', t(inFs ? 'toolbarFullscreenExit' : 'toolbarFullscreenEnter'));
+    if (enterIcon) enterIcon.toggleAttribute('hidden', inFs);
+    if (exitIcon) exitIcon.toggleAttribute('hidden', !inFs);
+  };
+
+  btn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      void document.body.requestFullscreen().catch((err: unknown) => {
+        console.warn('[fullscreen] enter failed', err);
+      });
+    } else {
+      void document.exitFullscreen().catch((err: unknown) => {
+        console.warn('[fullscreen] exit failed', err);
+      });
+    }
+  });
+
+  document.addEventListener('fullscreenchange', sync);
+  // Re-sync labels when language changes.
+  onLangChange(sync);
+  sync();
 }
 
 function initShareButton(): void {

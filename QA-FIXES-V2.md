@@ -27,7 +27,7 @@ Format des commits : `fix(qa-v2): BUG-00X (v2) — courte description`.
 | ID | Sévérité | Titre | Statut | Commit | Notes |
 |---|---|---|---|---|---|
 | BUG-001 (v2) | 🟡 Mineur | Toast Annuler trop court | TODO | — | 6s + barre progression + clic anywhere + pause focus |
-| BUG-002 (v2) | 🟠 Majeur | Toolbar masquée en plein écran | TODO | — | Bouton custom + `document.body.requestFullscreen()` |
+| BUG-002 (v2) | 🟠 Majeur | Toolbar masquée en plein écran | ✅ DONE | _pending_ | `FullscreenControl` Mapbox remplacé par bouton custom dans la toolbar. Cible : `document.body.requestFullscreen()` (toute l'UI déjà dans body, donc visible automatiquement). Listener `fullscreenchange` synchronise icône / aria-pressed / aria-label. Re-sync au changement de langue. |
 | BUG-003 (v2) | 🟡 Mineur | « Combien de temps ? » sans effet | TODO | — | Synchro Itinéraire (1er waypoint + profil) + légende |
 | BUG-004 (v2) | 🟡 Mineur | Popup POI persiste après désélection | TODO | — | `marker.getPopup()?.remove()` avant clearMarkers |
 | BUG-005 (v2) | 🟠 Majeur | Overflow mobile non corrigé | ✅ DONE | _pending_ | 3 ajustements : `.search-shell` → `width: min(480px, calc(100vw - 16px))` ; `.toolbar` mobile → `right: 8px; left: auto; flex-wrap: wrap; max-width: calc(100vw - 16px)` ; `.category-chips` → `max-width: 100%; min-width: 0; scrollbar masquée; scroll-snap`. |

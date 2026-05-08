@@ -98,4 +98,22 @@ export const en: Dict = {
   presetInvalid: 'Unknown light preset, falling back to default',
 
   appTitle: 'Photorealistic 3D Mapbox',
+
+  toolbarFullscreenEnter: 'Fullscreen',
+  toolbarFullscreenExit: 'Exit fullscreen',
+
+  styleFailed: 'The 3D style failed to load. Check your connection or try again.',
+  retry: 'Retry',
+
+  geolocTimeout: 'Request timed out, try again.',
+
+  presetInvalidNamed: (invalid: string, fallback: string): string =>
+    `Preset "${invalid}" unknown, falling back to "${fallback}"`,
+
+  isoNeedWaypoint: 'Place a starting point on the map first',
+  isoLegendTitle: 'Reachable area (min)',
+
+  autoActiveLabel: (currentPreset: string): string =>
+    `Auto mode active — current preset: ${currentPreset}`,
+  autoLabel: 'Auto mode',
 };
