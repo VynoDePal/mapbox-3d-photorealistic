@@ -187,9 +187,9 @@ function bootstrap(): void {
     bindUrlState(map, { getPreset: presetCtl.current });
     initShareButton();
     initFavoritesPanel(map, presetCtl);
-    initDirections(map);
+    const directionsCtl = initDirections(map);
     initSearchCategories(map);
-    initIsochrone(map);
+    initIsochrone(map, directionsCtl);
     initStory(map, presetCtl);
     initAutoPreset(map, presetCtl);
     initI18nUI();
